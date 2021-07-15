@@ -238,22 +238,7 @@ void loop() {
     offTime = 0;
   }
 
-  //If didn't receive any data (nothing plugged in), set the brightness to 0
-  if (brightness == 0) {
-    convertedBrightness = 0;
-  } else {
-    convertedBrightness = (int) ((255 * brightness) / 100);
-  }
-
-  //If didn't receive any data (nothing plugged in), set the onTime to arbitrary 400ms
-  if (onTime == 0) {
-    onTime = 0;
-  }
-
-  //If didn't receive any data (nothing plugged in), set the offTime to 0
-  if (offTime == 0) {
-    offTime = 0;
-  }
+  convertedBrightness = (int) ((255 * brightness) / 100);
 
   if (onOff == false) {
     if (cycleCountDelay < onCycles) {
@@ -275,15 +260,5 @@ void loop() {
     onCycles = onTime;
     offCycles = offTime;
   }
-  /*Serial.print(channel1);
-    Serial.print("  ");
-    Serial.print(channel2);
-    Serial.print("  ");
-    Serial.println(channel3);*/
-  /*Serial.print(brightness);
-  Serial.print("  ");
-  Serial.print(onTime);
-  Serial.print("  ");
-  Serial.println(offTime);*/
   delay(20);
 }
