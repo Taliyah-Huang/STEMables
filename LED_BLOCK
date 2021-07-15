@@ -1,90 +1,53 @@
-int averages1[5] = {0, 0, 0, 0, 0};
-int totalAve1 = 0;
-int trueVals1[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-int averages2[5] = {0, 0, 0, 0, 0};
-int totalAve2 = 0;
-int trueVals2[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-int averages3[5] = {0, 0, 0, 0, 0};
-int totalAve3 = 0;
-int trueVals3[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-int cycleCountChannel = 0;
-int cycleCountDelay = 0;
-int onCycles = 0;
-int offCycles = 0;
-bool onOff = false;
-
-bool channel1Vals[5] = {false, false, false, false, false};
-bool channel2Vals[5] = {false, false, false, false, false};
-bool channel3Vals[5] = {false, false, false, false, false};
-
-bool channel1 = false;
-bool channel2 = false;
-bool channel3 = false;
+const int RX_PIN1 = A1;
+const int TX_PIN1 = 0;
+const int ledPin = 1;
 
 const int inputVal[12] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50};
 const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02};
 const int finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
 
-const int RX_PIN1 = A1;
-const int RX_PIN2 = A2;
-const int RX_PIN3 = A3;
-const int ledPin = 0;
-
+int averages1[5] = {0, 0, 0, 0, 0};
+int totalAve1 = 0;
+int trueVals1[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+bool channel1 = false;
+bool channel1Vals[5] = {false, false, false, false, false};
 float trueVal1 = 0.0;
 float remainder1 = 0.0;
 
-float trueVal2 = 0.0;
-float remainder2 = 0.0;
-
-float trueVal3 = 0.0;
-float remainder3 = 0.0;
+int cycleCountChannel = 0;
+int cycleCountTX = 0;
+bool TX_Type = false;
 
 int brightness = 0;
 int convertedBrightness = 0;
 
-int onTime = 0;
-int convertedOnTime = 0;
-
-int offTime = 0;
-int convertedOffTime = 0;
-
 void setup() {
   pinMode(RX_PIN1, INPUT);
-  pinMode(RX_PIN2, INPUT);
-  pinMode(RX_PIN3, INPUT);
+  pinMode(TX_PIN1, OUTPUT);
   pinMode(ledPin, OUTPUT);
-  //Serial.begin(9600);
 }
 
 void loop() {
   cycleCountChannel++;
-  cycleCountDelay++;
+  cycleCountTX++;
 
+  //Record the channel state every 8 cycles
   if (cycleCountChannel == 8) {
     for (int i = 4; i > 0; i--) {
       channel1Vals[i] = channel1Vals[i - 1];
-      channel2Vals[i] = channel2Vals[i - 1];
-      channel3Vals[i] = channel3Vals[i - 1];
     }
     channel1Vals[0] = channel1;
-    channel2Vals[0] = channel2;
-    channel3Vals[0] = channel3;
     cycleCountChannel = 0;
   }
 
+  //Save 5 values for the running average
   for (int i = 4; i > 0; i--) {
     averages1[i] = averages1[i - 1];
-    averages2[i] = averages2[i - 1];
-    averages3[i] = averages3[i - 1];
   }
 
-  for (int i = 9; i > 0; i--) {
+  //Save past 8 values
+  for (int i = 7; i > 0; i--) {
     trueVals1[i] = trueVals1[i - 1];
-    trueVals2[i] = trueVals2[i - 1];
-    trueVals3[i] = trueVals3[i - 1];
   }
 
   if (channel1 == false) {
@@ -93,44 +56,16 @@ void loop() {
     }
   }
 
-  if (channel2 == false) {
-    if (analogRead(RX_PIN2) >= 480) {
-      channel2 = true;
-    }
-  }
-
-  if (channel3 == false) {
-    if (analogRead(RX_PIN3) >= 480) {
-      channel3 = true;
-    }
-  }
-
   if (channel1 == true) {
     averages1[0] = analogRead(RX_PIN1);
   }
 
-  if (channel2 == true) {
-    averages2[0] = analogRead(RX_PIN2);
-  }
-
-  if (channel3 == true) {
-    averages3[0] = analogRead(RX_PIN3);
-  }
-
   totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
-  totalAve2 = (averages2[4] + averages2[3] + averages2[2] + averages2[1] + averages2[0]) / 5;
-  totalAve3 = (averages3[4] + averages3[3] + averages3[2] + averages3[1] + averages3[0]) / 5;
 
   //Scale the received analog input to a number between 0 and 100
   for (int i = 0; i < 11; i++) {
     if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
       trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
-    }
-    if (totalAve2 >= finalVal[i] - 2 && totalAve2 <= finalVal[i + 1] - 2) {
-      trueVal2 = totalAve2 / (int) map(totalAve2, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
-    }
-    if (totalAve3 >= finalVal[i] - 2 && totalAve3 <= finalVal[i + 1] - 2) {
-      trueVal3 = totalAve3 / (int) map(totalAve3, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
     }
   }
 
@@ -139,38 +74,14 @@ void loop() {
     trueVal1 = 0.0;
   }
 
-  if (totalAve2 <= 4) {
-    trueVal2 = 0.0;
-  }
-
-  if (totalAve3 <= 4) {
-    trueVal3 = 0.0;
-  }
-
   //If the input is more than 201, the scaling is 4.02
   if (totalAve1 >= finalVal[11]) {
     trueVal1 = totalAve1 / scaleVal[11];
   }
 
-  if (totalAve2 >= finalVal[11]) {
-    trueVal2 = totalAve2 / scaleVal[11];
-  }
-
-  if (totalAve3 >= finalVal[11]) {
-    trueVal3 = totalAve3 / scaleVal[11];
-  }
-
   //If the input is more than 402, stop at 100
   if (totalAve1 >= 402) {
     trueVal1 = 100;
-  }
-
-  if (totalAve2 >= 402) {
-    trueVal2 = 100;
-  }
-
-  if (totalAve3 >= 402) {
-    trueVal3 = 100;
   }
 
   //Rounding
@@ -185,31 +96,7 @@ void loop() {
     trueVal1 = (int) trueVal1;
   }
 
-  remainder2 = (float) trueVal2 - (int) trueVal2;
-
-  if (remainder2 >= 0.5) {
-    trueVal2 = (int) trueVal2;
-    trueVal2++;
-  }
-
-  if (remainder2 < 0.5) {
-    trueVal2 = (int) trueVal2;
-  }
-
-  remainder3 = (float) trueVal3 - (int) trueVal3;
-
-  if (remainder3 >= 0.5) {
-    trueVal3 = (int) trueVal3;
-    trueVal3++;
-  }
-
-  if (remainder3 < 0.5) {
-    trueVal3 = (int) trueVal3;
-  }
-
   trueVals1[0] = trueVal1;
-  trueVals2[0] = trueVal2;
-  trueVals3[0] = trueVal3;
 
   if (channel1 == true && analogRead(RX_PIN1) <= 480 && averages1[0] >= averages1[1] - 5 && averages1[0] <= averages1[1] + 5 && averages1[1] >= averages1[2] - 5 && averages1[1] <= averages1[2] + 5 && averages1[2] >= averages1[3] - 5 && averages1[1] <= averages1[2] + 5 && averages1[3] >= averages1[4] - 5 && averages1[3] <= averages1[4] + 5 && trueVals1[0] == trueVals1[1] && trueVals1[1] == trueVals1[2] && trueVals1[2] == trueVals1[3] && trueVals1[3] == trueVals1[4] && trueVals1[4] == trueVals1[5] && trueVals1[5] == trueVals1[6] && trueVals1[6] == trueVals1[7]) {
     brightness = trueVal1;
@@ -217,48 +104,28 @@ void loop() {
   }
 
   if (channel1Vals[0] == false && channel1Vals[1] == false && channel1Vals[2] == false && channel1Vals[3] == false && channel1Vals[4] == false) {
-    brightness = 0;
-  }
-
-  if (channel2 == true && analogRead(RX_PIN2) <= 480 && averages2[0] >= averages2[1] - 5 && averages2[0] <= averages2[1] + 5 && averages2[1] >= averages2[2] - 5 && averages2[1] <= averages2[2] + 5 && averages2[2] >= averages2[3] - 5 && averages2[2] <= averages2[3] + 5 && averages2[3] >= averages2[4] - 5 && averages2[3] <= averages2[4] + 5 && trueVals2[0] == trueVals2[1] && trueVals2[1] == trueVals2[2] && trueVals2[2] == trueVals2[3] && trueVals2[3] == trueVals2[4] && trueVals2[4] == trueVals2[5] && trueVals2[5] == trueVals2[6] && trueVals2[6] == trueVals2[7]) {
-    onTime = trueVal2;
-    channel2 = false;
-  }
-
-  if (channel2Vals[0] == false && channel2Vals[1] == false && channel2Vals[2] == false && channel2Vals[3] == false && channel2Vals[4] == false) {
-    onTime = 0;
-  }
-
-  if (channel3 == true && analogRead(RX_PIN3) <= 480 && averages3[0] >= averages3[1] - 5 && averages3[0] <= averages3[1] + 5 && averages3[1] >= averages3[2] - 5 && averages3[1] <= averages3[2] + 5 && averages3[2] >= averages3[3] - 5 && averages3[2] <= averages3[3] + 5 && averages3[3] >= averages3[4] - 5 && averages3[3] <= averages3[4] + 5 && trueVals3[0] == trueVals3[1] && trueVals3[1] == trueVals3[2] && trueVals3[2] == trueVals3[3] && trueVals3[3] == trueVals3[4] && trueVals3[4] == trueVals3[5] && trueVals3[5] == trueVals3[6] && trueVals3[6] == trueVals3[7]) {
-    offTime = trueVal3;
-    channel3 = false;
-  }
-
-  if (channel3Vals[0] == false && channel3Vals[1] == false && channel3Vals[2] == false && channel3Vals[3] == false && channel3Vals[4] == false) {
-    offTime = 0;
+    brightness = 100; //Set the brightness to default 100 if no number is connected
   }
 
   convertedBrightness = (int) ((255 * brightness) / 100);
+  analogWrite(ledPin, convertedBrightness);
 
-  if (onOff == false) {
-    if (cycleCountDelay < onCycles) {
-      analogWrite(ledPin, convertedBrightness);
+  //Project the received data to the next module connected directly to LED
+  if (TX_Type == false) {
+    if (cycleCountTX < 15) { //Send channel signal for 300ms
+      analogWrite(TX_PIN1, 150);
     } else {
-      cycleCountDelay = 0;
-      onOff = true;
+      cycleCountTX = 0;
+      TX_Type = true;
     }
   } else {
-    if (cycleCountDelay < offCycles) {
-      analogWrite(ledPin, 0);
+    if (cycleCountTX < 50) { //Send brightness for 1000ms
+      analogWrite(TX_PIN1, brightness);
     } else {
-      cycleCountDelay = 0;
-      onOff = false;
+      cycleCountTX = 0;
+      TX_Type = false;
     }
   }
 
-  if (cycleCountDelay == 0) {
-    onCycles = onTime;
-    offCycles = offTime;
-  }
   delay(20);
 }
