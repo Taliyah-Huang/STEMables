@@ -8,18 +8,18 @@ const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1
 const int finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
 
 int cycleCountChannel = 0;
-int cycleCountDelay = 0;
 int cycleCountTX = 0;
-int onCycles = 0;
-int offCycles = 0;
+
 bool onOff = false;
-bool TX_Type = false;
+int TX_Type = 0;
+
+int sendVal;
 
 int averages1[5] = {0, 0, 0, 0, 0};
 int totalAve1 = 0;
 int trueVals1[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 bool channel1 = false;
-bool channel1Vals[5] = {false, false, false, false, false};
+int channel1Count = 0;
 float trueVal1 = 0.0;
 float remainder1 = 0.0;
 
@@ -27,7 +27,7 @@ int averages2[5] = {0, 0, 0, 0, 0};
 int totalAve2 = 0;
 int trueVals2[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 bool channel2 = false;
-bool channel2Vals[5] = {false, false, false, false, false};
+int channel2Count = 0;
 float trueVal2 = 0.0;
 float remainder2 = 0.0;
 
@@ -35,7 +35,7 @@ int averages3[5] = {0, 0, 0, 0, 0};
 int totalAve3 = 0;
 int trueVals3[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 bool channel3 = false;
-bool channel3Vals[5] = {false, false, false, false, false};
+int channel3Count = 0;
 float trueVal3 = 0.0;
 float remainder3 = 0.0;
 
@@ -52,20 +52,24 @@ void setup() {
 
 void loop() {
   cycleCountChannel++;
-  cycleCountDelay++;
   cycleCountTX++;
+  
+  if (channel1 == 0) {
+    channel1Count++;
+  } else {
+    channel1Count = 0;
+  }
 
-  //Record the channel state every 8 cycles
-  if (cycleCountChannel == 8) {
-    for (int i = 4; i > 0; i--) {
-      channel1Vals[i] = channel1Vals[i - 1];
-      channel2Vals[i] = channel2Vals[i - 1];
-      channel3Vals[i] = channel3Vals[i - 1];
-    }
-    channel1Vals[0] = channel1;
-    channel2Vals[0] = channel2;
-    channel3Vals[0] = channel3;
-    cycleCountChannel = 0;
+  if (channel2 == 0) {
+    channel2Count++;
+  } else {
+    channel2Count = 0;
+  }
+
+  if (channel3 == 0) {
+    channel3Count++;
+  } else {
+    channel3Count = 0;
   }
 
   //Save 5 values for the running average
@@ -213,7 +217,7 @@ void loop() {
     channel1 = false;
   }
 
-  if (channel1Vals[0] == false && channel1Vals[1] == false && channel1Vals[2] == false && channel1Vals[3] == false && channel1Vals[4] == false) {
+  if (channel1Count >= 100) {
     level = 100; //Set the level to default 100 if no number is connected
   }
 
@@ -222,7 +226,7 @@ void loop() {
     channel2 = false;
   }
 
-  if (channel2Vals[0] == false && channel2Vals[1] == false && channel2Vals[2] == false && channel2Vals[3] == false && channel2Vals[4] == false) {
+  if (channel2Count >= 100) {
     onTime = 0;
   }
 
@@ -231,44 +235,60 @@ void loop() {
     channel3 = false;
   }
 
-  if (channel3Vals[0] == false && channel3Vals[1] == false && channel3Vals[2] == false && channel3Vals[3] == false && channel3Vals[4] == false) {
+  if (channel3Count >= 100) {
     offTime = 0;
   }
 
-  if (TX_Type == false) {
+  if (TX_Type == 0) {
     if (cycleCountTX < 15) { //Send channel signal for 300ms
-      analogWrite(TX_PIN1, 150);
+      sendVal = 150;
     } else {
       cycleCountTX = 0;
-      TX_Type = true;
+      TX_Type = 1;
     }
-  } else {
-    if (cycleCountTX < 50) { //Send level for 1000ms
-      if (onOff == false) { //Check if should be sending on or off signal
-        if (cycleCountDelay < onCycles) {
-          analogWrite(TX_PIN1, level);
-        } else {
-          cycleCountDelay = 0;
-          onOff = true;
-        }
-      } else {
-        if (cycleCountDelay < offCycles) {
-          analogWrite(TX_PIN1, 0);
-        } else {
-          cycleCountDelay = 0;
-          onOff = false;
-        }
-      }
+  }
+  if (TX_Type == 1) {
+    if (cycleCountTX < 50) { //Send brightness for 1000ms
+      sendVal = level;
     } else {
       cycleCountTX = 0;
-      TX_Type = false;
+      TX_Type = 2;
+    }
+  }
+  if(TX_Type == 2){
+    if (cycleCountTX < 15) { //Send channel signal for 300ms
+      sendVal = 180;
+    } else {
+      cycleCountTX = 0;
+      TX_Type = 3;
+    }
+  }
+  if (TX_Type == 3) {
+    if (cycleCountTX < 50) { //Send brightness for 1000ms
+      sendVal = onTime;
+    } else {
+      cycleCountTX = 0;
+      TX_Type = 4;
+    }
+  }
+  if(TX_Type == 4){
+    if (cycleCountTX < 15) { //Send channel signal for 300ms
+      sendVal = 210;
+    } else {
+      cycleCountTX = 0;
+      TX_Type = 5;
+    }
+  }
+  if (TX_Type == 5) {
+    if (cycleCountTX < 50) { //Send brightness for 1000ms
+      sendVal = offTime;
+    } else {
+      cycleCountTX = 0;
+      TX_Type = 0;
     }
   }
 
-  if (cycleCountDelay == 0) {
-    onCycles = onTime;
-    offCycles = offTime;
-  }
+  analogWrite(TX_PIN1, sendVal);
 
   delay(20);
 }
