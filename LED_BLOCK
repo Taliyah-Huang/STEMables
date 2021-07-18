@@ -10,16 +10,24 @@ int averages1[5] = {0, 0, 0, 0, 0};
 int totalAve1 = 0;
 int trueVals1[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 bool channel1 = false;
-bool channel1Vals[5] = {false, false, false, false, false};
+int channel1Count = 0;
 float trueVal1 = 0.0;
 float remainder1 = 0.0;
+int RX_Type = 0;
 
 int cycleCountChannel = 0;
+int cycleCountDelay = 0;
 int cycleCountTX = 0;
 bool TX_Type = false;
+bool onOff = false;
+int onCycles = 0;
+int offCycles = 0;
 
 int brightness = 0;
 int convertedBrightness = 0;
+
+int onTime = 0;
+int offTime = 0;
 
 void setup() {
   pinMode(RX_PIN1, INPUT);
@@ -30,14 +38,12 @@ void setup() {
 void loop() {
   cycleCountChannel++;
   cycleCountTX++;
+  cycleCountDelay++;
 
-  //Record the channel state every 8 cycles
-  if (cycleCountChannel == 8) {
-    for (int i = 4; i > 0; i--) {
-      channel1Vals[i] = channel1Vals[i - 1];
-    }
-    channel1Vals[0] = channel1;
-    cycleCountChannel = 0;
+  if (channel1 == 0) {
+    channel1Count++;
+  } else {
+    channel1Count = 0;
   }
 
   //Save 5 values for the running average
@@ -50,9 +56,24 @@ void loop() {
     trueVals1[i] = trueVals1[i - 1];
   }
 
-  if (channel1 == false) {
-    if (analogRead(RX_PIN1) >= 480) {
-      channel1 = true;
+  if (channel1 == false ) {
+    if (RX_Type == 0) {
+      if (analogRead(RX_PIN1) >= 500 && analogRead(RX_PIN1) < 650) {
+        channel1 = true;
+        RX_Type = 1;
+      }
+    }
+    if (RX_Type == 2) {
+      if (analogRead(RX_PIN1) >= 650 && analogRead(RX_PIN1) < 750) {
+        channel1 = true;
+        RX_Type = 3;
+      }
+    }
+    if (RX_Type == 4) {
+      if (analogRead(RX_PIN1) >= 750) {
+        channel1 = true;
+        RX_Type = 5;
+      }
     }
   }
 
@@ -86,29 +107,58 @@ void loop() {
 
   //Rounding
   remainder1 = (float) trueVal1 - (int) trueVal1;
+  trueVal1 = (int) trueVal1;
 
   if (remainder1 >= 0.5) {
-    trueVal1 = (int) trueVal1;
     trueVal1++;
-  }
-
-  if (remainder1 < 0.5) {
-    trueVal1 = (int) trueVal1;
   }
 
   trueVals1[0] = trueVal1;
 
   if (channel1 == true && analogRead(RX_PIN1) <= 480 && averages1[0] >= averages1[1] - 5 && averages1[0] <= averages1[1] + 5 && averages1[1] >= averages1[2] - 5 && averages1[1] <= averages1[2] + 5 && averages1[2] >= averages1[3] - 5 && averages1[1] <= averages1[2] + 5 && averages1[3] >= averages1[4] - 5 && averages1[3] <= averages1[4] + 5 && trueVals1[0] == trueVals1[1] && trueVals1[1] == trueVals1[2] && trueVals1[2] == trueVals1[3] && trueVals1[3] == trueVals1[4] && trueVals1[4] == trueVals1[5] && trueVals1[5] == trueVals1[6] && trueVals1[6] == trueVals1[7]) {
-    brightness = trueVal1;
+    if (RX_Type == 1) {
+      brightness = trueVal1;
+      RX_Type = 2;
+    }
+    if (RX_Type == 3) {
+      onTime = trueVal1;
+      RX_Type = 4;
+    }
+    if (RX_Type == 5) {
+      offTime = trueVal1;
+      RX_Type = 0;
+    }
     channel1 = false;
   }
 
-  if (channel1Vals[0] == false && channel1Vals[1] == false && channel1Vals[2] == false && channel1Vals[3] == false && channel1Vals[4] == false) {
+  if (channel1Count >= 100) {
     brightness = 100; //Set the brightness to default 100 if no number is connected
+    onTime = 10;
+    offTime = 0;
   }
 
   convertedBrightness = (int) ((255 * brightness) / 100);
-  analogWrite(ledPin, convertedBrightness);
+
+  if (onOff == false) {
+    if (cycleCountDelay < onCycles) {
+      analogWrite(ledPin, convertedBrightness);
+    } else {
+      cycleCountDelay = 0;
+      onOff = true;
+    }
+  } else {
+    if (cycleCountDelay < offCycles) {
+      analogWrite(ledPin, 0);
+    } else {
+      cycleCountDelay = 0;
+      onOff = false;
+    }
+  }
+
+  if (cycleCountDelay == 0) {
+    onCycles = onTime;
+    offCycles = offTime;
+  }
 
   //Project the received data to the next module connected directly to LED
   if (TX_Type == false) {
