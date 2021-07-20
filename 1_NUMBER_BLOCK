@@ -1,0 +1,53 @@
+const int TX_PIN1 = 0;
+const int sensorPin = A2;
+
+int sensorVal = 0;
+int TX_Val = 0;
+
+void setup() {
+  pinMode(sensorPin, INPUT);
+  pinMode(TX_PIN1, OUTPUT);
+}
+
+void loop() {
+  sensorVal = analogRead(sensorPin);
+
+  if (sensorVal == 0) {
+    TX_Val = 0;
+  }
+  if (sensorVal >= 8 && sensorVal <= 12) {
+    TX_Val = 10;
+  }
+  if (sensorVal >= 98 && sensorVal <= 102) {
+    TX_Val = 20;
+  }
+  if (sensorVal >= 214 && sensorVal <= 218) {
+    TX_Val = 30;
+  }
+  if (sensorVal >= 344 && sensorVal <= 348) {
+    TX_Val = 40;
+  }
+  if (sensorVal >= 491 && sensorVal <= 495) {
+    TX_Val = 50;
+  }
+  if (sensorVal >= 644 && sensorVal <= 648) {
+    TX_Val = 60;
+  }
+  if (sensorVal >= 777 && sensorVal <= 781) {
+    TX_Val = 70;
+  }
+  if (sensorVal >= 904 && sensorVal <= 908) {
+    TX_Val = 80;
+  }
+  if (sensorVal >= 1007 && sensorVal <= 1011) {
+    TX_Val = 90;
+  }
+  if (sensorVal >= 1021 && sensorVal <= 1025) {
+    TX_Val = 100;
+  }
+
+  analogWrite(TX_PIN1, 120);
+  delay(500);
+  analogWrite(TX_PIN1, TX_Val);
+  delay(500);
+}
