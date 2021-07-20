@@ -9,6 +9,7 @@ int ledCommand = 0;
 int cycleCountDelay = 0;
 int lastCommand = 0;
 bool newVal = true;
+bool reset = false;
 
 int true1Count = 0;
 int storage1 [14] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
@@ -47,6 +48,7 @@ void loop() {
 
   channel1 = false;
 
+  //Running average of analogRead values
   for (int i = 4; i > 0; i--) {
     averages1[i] = averages1[i - 1];
   }
@@ -54,6 +56,7 @@ void loop() {
 
   totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
 
+  //Scale from raw analog to 0-255
   for (int i = 0; i < 12; i++) {
     if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
       trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
@@ -64,14 +67,17 @@ void loop() {
     trueVal1 = 0.0;
   }
 
+  //Anything greater than or equal to the value for 101 will be divided by 4
   if (totalAve1 >= finalVal[12]) {
     trueVal1 = totalAve1 / scaleVal[12];
   }
 
+  //Anything between 100~120 will be 100
   if (totalAve1 >= 400 && totalAve1 <= 435) {
     trueVal1 = 100.0;
   }
 
+  //Round the value by 0.5
   remainder1 = (float) trueVal1 - (int) trueVal1;
   trueVal1 = (int) trueVal1;
 
@@ -79,9 +85,11 @@ void loop() {
     trueVal1++;
   }
 
+  //Holding 2 values
   trueVals1[1] = trueVals1[0];
   trueVals1[0] = trueVal1;
 
+  //Count the number of "repeated" values
   if (trueVals1[0] >= trueVals1[1] - 2 && trueVals1[0] <= trueVals1[1] + 2) {
     true1Count++;
   } else {
@@ -90,10 +98,12 @@ void loop() {
     }
   }
 
+  //Collect the most closest value once
   if (true1Count == 10) {
     peakVal1 = trueVals1[0];
   }
 
+  //Check if the value is 120-250 to use as a signal
   for (int i = 0; i < 14; i++) {
     if (peakVal1 >= (120 + (i * 10)) - 2 && peakVal1 <= (120 + (i * 10)) + 2) {
       storeNum1 = i;
@@ -102,26 +112,37 @@ void loop() {
     }
   }
 
-  if (peakVal1 <= 105) {
-    storage1[storeNum1] = peakVal1;
-  }
-
   //Set defaults if no number is connected
   if (channel1Count >= 100) {
     for (int i = 0; i < 14; i++) {
       storage1[i] = -1;
     }
-    storage1[0] = 100;
+    storage1[0] = 10;
     storage1[1] = 100;
     storage1[2] = 0;
+    reset = true;
+  } else {
+    if (reset == true) {
+      for (int i = 0; i < 14; i++) {
+        storage1[i] = -1;
+      }
+      reset = false;
+    }
   }
 
+  //If it is 0-100, collect the value into the storage
+  if (peakVal1 <= 105) {
+    storage1[storeNum1] = peakVal1;
+  }
+
+  //Check how many are stored
   for (int i = 13; i >= 0; i--) {
     if (storage1[i] == -1) {
       store1Count = i - 1;
     }
   }
 
+  //If there is an odd number of values in the storage, make the last one have brightness of 0 at the length of time of the last stored value
   if (store1Count == 0 || store1Count == 2 || store1Count == 4 || store1Count == 6 || store1Count == 8 || store1Count == 10 || store1Count == 12) {
     extraBlank = true;
   }
@@ -130,20 +151,26 @@ void loop() {
     playNum = 0;
   }
 
-  if (cycleCountDelay < storage1[playNum]) {
-    if (playNum == store1Count && extraBlank == true) {
-      ledCommand = 0;
-    } else {
-      ledCommand = (int) ((255 * storage1[playNum + 1]) / 100);
-    }
+  //If there is only one value, use that as the brightness
+  if (store1Count == 0) {
+    ledCommand = (int) map(storage1[0], 0, 100, 0, 255);
   } else {
-    cycleCountDelay = 0;
-    playNum += 2;
+    if (cycleCountDelay < storage1[playNum]) { //Repeat this for as many times as the length says
+      if (playNum == store1Count && extraBlank == true) { //If this is on the last stored value that is an odd number and there is no next number for the brightness, set the brightness to 0
+        ledCommand = 0;
+      } else {
+        ledCommand = (int) map(storage1[playNum + 1], 0, 100, 0, 255); //Scale from 0-100 to 0-255
+      }
+    } else {
+      cycleCountDelay = 0;
+      playNum += 2; //Move up 2 on the storage
+    }
   }
 
-  if(lastCommand > ledCommand + 2 || lastCommand < ledCommand - 2){
+  //Only call the analogWrite if there is a significantly different value to send
+  if (lastCommand > ledCommand + 2 || lastCommand < ledCommand - 2) {
     newVal = true;
-  }else{
+  } else {
     newVal = false;
   }
 
