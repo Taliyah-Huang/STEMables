@@ -1,111 +1,77 @@
-const int RX_PIN1 = A1;
-const int TX_PIN1 = 0;
 const int ledPin = 1;
+const int RX_PIN1 = A1;
 
-const int inputVal[12] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50};
-const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02};
-const int finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
+int currentRead = 0;
+bool play = false;
+int playNum = 0;
+bool extraBlank = false;
+int ledCommand = 0;
+int cycleCountDelay = 0;
+int lastCommand = 0;
+bool newVal = true;
 
+int true1Count = 0;
+int storage1 [14] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+int store1Count = 0;
 int averages1[5] = {0, 0, 0, 0, 0};
 int totalAve1 = 0;
-int trueVals1[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+int trueVals1[2] = {0, 0};
+float trueVal1 = 0.0;
+int peakVal1 = 0;
+float remainder1 = 0.0;
+int storeNum1 = 0;
 bool channel1 = false;
 int channel1Count = 0;
-float trueVal1 = 0.0;
-float remainder1 = 0.0;
-int RX_Type = 0;
 
-int cycleCountChannel = 0;
-int cycleCountDelay = 0;
-int cycleCountTX = 0;
-bool TX_Type = false;
-bool onOff = false;
-int onCycles = 0;
-int offCycles = 0;
-
-int brightness = 0;
-int convertedBrightness = 0;
-
-int onTime = 0;
-int offTime = 0;
+const int inputVal[13] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 101};
+const float scaleVal[13] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02, 4.0};
+const int finalVal[13] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201, 405};
 
 void setup() {
-  pinMode(RX_PIN1, INPUT);
-  pinMode(TX_PIN1, OUTPUT);
   pinMode(ledPin, OUTPUT);
+  pinMode(RX_PIN1, INPUT);
 }
 
 void loop() {
-  cycleCountChannel++;
-  cycleCountTX++;
   cycleCountDelay++;
+  currentRead = analogRead(RX_PIN1);
 
-  if (channel1 == 0) {
+  //Count channel disconnected
+  if (channel1 == false) {
     channel1Count++;
   } else {
-    channel1Count = 0;
+    if (channel1Count != 0) {
+      channel1Count = 0;
+    }
   }
 
-  //Save 5 values for the running average
+  channel1 = false;
+
   for (int i = 4; i > 0; i--) {
     averages1[i] = averages1[i - 1];
   }
-
-  //Save past 8 values
-  for (int i = 7; i > 0; i--) {
-    trueVals1[i] = trueVals1[i - 1];
-  }
-
-  if (channel1 == false ) {
-    if (RX_Type == 0) {
-      if (analogRead(RX_PIN1) >= 500 && analogRead(RX_PIN1) < 650) {
-        channel1 = true;
-        RX_Type = 1;
-      }
-    }
-    if (RX_Type == 2) {
-      if (analogRead(RX_PIN1) >= 650 && analogRead(RX_PIN1) < 750) {
-        channel1 = true;
-        RX_Type = 3;
-      }
-    }
-    if (RX_Type == 4) {
-      if (analogRead(RX_PIN1) >= 750) {
-        channel1 = true;
-        RX_Type = 5;
-      }
-    }
-  }
-
-  if (channel1 == true) {
-    averages1[0] = analogRead(RX_PIN1);
-  }
+  averages1[0] = currentRead;
 
   totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
 
-  //Scale the received analog input to a number between 0 and 100
-  for (int i = 0; i < 11; i++) {
+  for (int i = 0; i < 12; i++) {
     if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
       trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
     }
   }
 
-  //If the input is 4 or less, the value is 0
-  if (totalAve1 <= 4) {
+  if (totalAve1 <= 3) {
     trueVal1 = 0.0;
   }
 
-  //If the input is more than 201, the scaling is 4.02
-  if (totalAve1 >= finalVal[11]) {
-    trueVal1 = totalAve1 / scaleVal[11];
+  if (totalAve1 >= finalVal[12]) {
+    trueVal1 = totalAve1 / scaleVal[12];
   }
 
-  //If the input is more than 402, stop at 100
-  if (totalAve1 >= 402) {
-    trueVal1 = 100;
+  if (totalAve1 >= 400 && totalAve1 <= 435) {
+    trueVal1 = 100.0;
   }
 
-  //Rounding
   remainder1 = (float) trueVal1 - (int) trueVal1;
   trueVal1 = (int) trueVal1;
 
@@ -113,68 +79,77 @@ void loop() {
     trueVal1++;
   }
 
+  trueVals1[1] = trueVals1[0];
   trueVals1[0] = trueVal1;
 
-  if (channel1 == true && analogRead(RX_PIN1) <= 480 && averages1[0] >= averages1[1] - 5 && averages1[0] <= averages1[1] + 5 && averages1[1] >= averages1[2] - 5 && averages1[1] <= averages1[2] + 5 && averages1[2] >= averages1[3] - 5 && averages1[1] <= averages1[2] + 5 && averages1[3] >= averages1[4] - 5 && averages1[3] <= averages1[4] + 5 && trueVals1[0] == trueVals1[1] && trueVals1[1] == trueVals1[2] && trueVals1[2] == trueVals1[3] && trueVals1[3] == trueVals1[4] && trueVals1[4] == trueVals1[5] && trueVals1[5] == trueVals1[6] && trueVals1[6] == trueVals1[7]) {
-    if (RX_Type == 1) {
-      brightness = trueVal1;
-      RX_Type = 2;
+  if (trueVals1[0] >= trueVals1[1] - 2 && trueVals1[0] <= trueVals1[1] + 2) {
+    true1Count++;
+  } else {
+    if (true1Count != 0) {
+      true1Count = 0;
     }
-    if (RX_Type == 3) {
-      onTime = trueVal1;
-      RX_Type = 4;
-    }
-    if (RX_Type == 5) {
-      offTime = trueVal1;
-      RX_Type = 0;
-    }
-    channel1 = false;
   }
 
+  if (true1Count == 10) {
+    peakVal1 = trueVals1[0];
+  }
+
+  for (int i = 0; i < 14; i++) {
+    if (peakVal1 >= (120 + (i * 10)) - 2 && peakVal1 <= (120 + (i * 10)) + 2) {
+      storeNum1 = i;
+      channel1 = true;
+      peakVal1 = (120 + (i * 10));
+    }
+  }
+
+  if (peakVal1 <= 105) {
+    storage1[storeNum1] = peakVal1;
+  }
+
+  //Set defaults if no number is connected
   if (channel1Count >= 100) {
-    brightness = 100; //Set the brightness to default 100 if no number is connected
-    onTime = 10;
-    offTime = 0;
+    for (int i = 0; i < 14; i++) {
+      storage1[i] = -1;
+    }
+    storage1[0] = 100;
+    storage1[1] = 100;
+    storage1[2] = 0;
   }
 
-  convertedBrightness = (int) ((255 * brightness) / 100);
+  for (int i = 13; i >= 0; i--) {
+    if (storage1[i] == -1) {
+      store1Count = i - 1;
+    }
+  }
 
-  if (onOff == false) {
-    if (cycleCountDelay < onCycles) {
-      analogWrite(ledPin, convertedBrightness);
+  if (store1Count == 0 || store1Count == 2 || store1Count == 4 || store1Count == 6 || store1Count == 8 || store1Count == 10 || store1Count == 12) {
+    extraBlank = true;
+  }
+
+  if (playNum > store1Count) {
+    playNum = 0;
+  }
+
+  if (cycleCountDelay < storage1[playNum]) {
+    if (playNum == store1Count && extraBlank == true) {
+      ledCommand = 0;
     } else {
-      cycleCountDelay = 0;
-      onOff = true;
+      ledCommand = (int) ((255 * storage1[playNum + 1]) / 100);
     }
   } else {
-    if (cycleCountDelay < offCycles) {
-      analogWrite(ledPin, 0);
-    } else {
-      cycleCountDelay = 0;
-      onOff = false;
-    }
+    cycleCountDelay = 0;
+    playNum += 2;
   }
 
-  if (cycleCountDelay == 0) {
-    onCycles = onTime;
-    offCycles = offTime;
+  if(lastCommand > ledCommand + 2 || lastCommand < ledCommand - 2){
+    newVal = true;
+  }else{
+    newVal = false;
   }
 
-  //Project the received data to the next module connected directly to LED
-  if (TX_Type == false) {
-    if (cycleCountTX < 15) { //Send channel signal for 300ms
-      analogWrite(TX_PIN1, 150);
-    } else {
-      cycleCountTX = 0;
-      TX_Type = true;
-    }
-  } else {
-    if (cycleCountTX < 50) { //Send brightness for 1000ms
-      analogWrite(TX_PIN1, brightness);
-    } else {
-      cycleCountTX = 0;
-      TX_Type = false;
-    }
+  if (newVal == true) {
+    analogWrite(ledPin, ledCommand);
+    lastCommand = ledCommand;
   }
 
   delay(20);
