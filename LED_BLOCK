@@ -12,7 +12,7 @@ bool newVal = true;
 bool reset = false;
 
 int true1Count = 0;
-int storage1 [14] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+int storage1 [12] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 int store1Count = 0;
 int averages1[5] = {0, 0, 0, 0, 0};
 int totalAve1 = 0;
@@ -31,6 +31,7 @@ const int finalVal[13] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201, 405};
 void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(RX_PIN1, INPUT);
+  analogWrite(ledPin, 255);
 }
 
 void loop() {
@@ -61,10 +62,6 @@ void loop() {
     if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
       trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
     }
-  }
-
-  if (totalAve1 <= 3) {
-    trueVal1 = 0.0;
   }
 
   //Anything greater than or equal to the value for 101 will be divided by 4
@@ -103,9 +100,9 @@ void loop() {
     peakVal1 = trueVals1[0];
   }
 
-  //Check if the value is 120-250 to use as a signal
-  for (int i = 0; i < 14; i++) {
-    if (peakVal1 >= (120 + (i * 10)) - 2 && peakVal1 <= (120 + (i * 10)) + 2) {
+  //Check if the value is 120-230 to use as a signal
+  for (int i = 0; i < 12; i++) {
+    if (peakVal1 >= (120 + (i * 10)) - 4 && peakVal1 <= (120 + (i * 10)) + 4) {
       storeNum1 = i;
       channel1 = true;
       peakVal1 = (120 + (i * 10));
@@ -114,7 +111,7 @@ void loop() {
 
   //Set defaults if no number is connected
   if (channel1Count >= 100) {
-    for (int i = 0; i < 14; i++) {
+    for (int i = 0; i < 12; i++) {
       storage1[i] = -1;
     }
     storage1[0] = 10;
@@ -123,7 +120,7 @@ void loop() {
     reset = true;
   } else {
     if (reset == true) {
-      for (int i = 0; i < 14; i++) {
+      for (int i = 0; i < 12; i++) {
         storage1[i] = -1;
       }
       reset = false;
@@ -135,15 +132,19 @@ void loop() {
     storage1[storeNum1] = peakVal1;
   }
 
+  if (peakVal1 >= 250 - 4 && peakVal1 <= 250 + 4) {
+    storage1[storeNum1] = 0;
+  }
+
   //Check how many are stored
-  for (int i = 13; i >= 0; i--) {
+  for (int i = 11; i >= 0; i--) {
     if (storage1[i] == -1) {
       store1Count = i - 1;
     }
   }
 
   //If there is an odd number of values in the storage, make the last one have brightness of 0 at the length of time of the last stored value
-  if (store1Count == 0 || store1Count == 2 || store1Count == 4 || store1Count == 6 || store1Count == 8 || store1Count == 10 || store1Count == 12) {
+  if (store1Count == 0 || store1Count == 2 || store1Count == 4 || store1Count == 6 || store1Count == 8 || store1Count == 10) {
     extraBlank = true;
   }
 
@@ -155,7 +156,7 @@ void loop() {
   if (store1Count == 0) {
     ledCommand = (int) map(storage1[0], 0, 100, 0, 255);
   } else {
-    if (cycleCountDelay < storage1[playNum]) { //Repeat this for as many times as the length says
+    if (cycleCountDelay < storage1[playNum] * 2) { //Repeat this for as many times as the length says
       if (playNum == store1Count && extraBlank == true) { //If this is on the last stored value that is an odd number and there is no next number for the brightness, set the brightness to 0
         ledCommand = 0;
       } else {
@@ -168,7 +169,7 @@ void loop() {
   }
 
   //Only call the analogWrite if there is a significantly different value to send
-  if (lastCommand > ledCommand + 2 || lastCommand < ledCommand - 2) {
+  if (lastCommand > ledCommand + 1 || lastCommand < ledCommand - 1) {
     newVal = true;
   } else {
     newVal = false;
@@ -179,5 +180,5 @@ void loop() {
     lastCommand = ledCommand;
   }
 
-  delay(20);
+  delay(10);
 }
