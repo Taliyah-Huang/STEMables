@@ -1,16 +1,16 @@
 const int ledPin = 1;
 const int RX_PIN1 = A1;
 
-int currentRead = 0;
 bool play = false;
 int playNum = 0;
 bool extraBlank = false;
-int ledCommand = 0;
+int ledCommand = 255;
 int cycleCountDelay = 0;
-int lastCommand = 0;
+int lastCommand = 255;
 bool newVal = true;
 bool reset = false;
 
+int currentRead1 = 0;
 int true1Count = 0;
 int storage1 [12] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 int store1Count = 0;
@@ -18,7 +18,7 @@ int averages1[5] = {0, 0, 0, 0, 0};
 int totalAve1 = 0;
 int trueVals1[2] = {0, 0};
 float trueVal1 = 0.0;
-int peakVal1 = 0;
+int peakVal1 = -1;
 float remainder1 = 0.0;
 int storeNum1 = 0;
 bool channel1 = false;
@@ -36,7 +36,7 @@ void setup() {
 
 void loop() {
   cycleCountDelay++;
-  currentRead = analogRead(RX_PIN1);
+  currentRead1 = analogRead(RX_PIN1);
 
   //Count channel disconnected
   if (channel1 == false) {
@@ -53,7 +53,7 @@ void loop() {
   for (int i = 4; i > 0; i--) {
     averages1[i] = averages1[i - 1];
   }
-  averages1[0] = currentRead;
+  averages1[0] = currentRead1;
 
   totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
 
@@ -128,11 +128,11 @@ void loop() {
   }
 
   //If it is 0-100, collect the value into the storage
-  if (peakVal1 <= 105) {
+  if (peakVal1 <= 105 && channel1Count < 100) {
     storage1[storeNum1] = peakVal1;
   }
 
-  if (peakVal1 >= 250 - 4 && peakVal1 <= 250 + 4) {
+  if (peakVal1 >= 240 - 2 && peakVal1 <= 250 + 2 && channel1Count < 100) {
     storage1[storeNum1] = 0;
   }
 
@@ -179,6 +179,6 @@ void loop() {
     analogWrite(ledPin, ledCommand);
     lastCommand = ledCommand;
   }
-
+  
   delay(10);
 }
