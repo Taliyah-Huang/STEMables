@@ -12,38 +12,38 @@ void setup() {
 void loop() {
   sensorVal = analogRead(sensorPin);
 
-  if (sensorVal == 0) {
+  if (sensorVal >= 0 && sensorVal <= 5) {
     TX_Val = 250;
   }
-  if (sensorVal >= 8 && sensorVal <= 12) {
+  if (sensorVal >= 10 && sensorVal <= 20) {
     TX_Val = 10;
   }
-  if (sensorVal >= 98 && sensorVal <= 102) {
+  if (sensorVal >= 50 && sensorVal <= 150) {
     TX_Val = 20;
   }
-  if (sensorVal >= 214 && sensorVal <= 218) {
+  if (sensorVal >= 200 && sensorVal <= 250) {
     TX_Val = 30;
   }
-  if (sensorVal >= 344 && sensorVal <= 348) {
+  if (sensorVal >= 300 && sensorVal <= 400) {
     TX_Val = 40;
   }
-  if (sensorVal >= 491 && sensorVal <= 495) {
+  if (sensorVal >= 450 && sensorVal <= 550) {
     TX_Val = 50;
   }
-  if (sensorVal >= 644 && sensorVal <= 648) {
+  if (sensorVal >= 600 && sensorVal <= 700) {
     TX_Val = 60;
   }
-  if (sensorVal >= 777 && sensorVal <= 781) {
+  if (sensorVal >= 750 && sensorVal <= 800) {
     TX_Val = 70;
   }
-  if (sensorVal >= 904 && sensorVal <= 908) {
+  if (sensorVal >= 850 && sensorVal <= 950) {
     TX_Val = 80;
   }
-  if (sensorVal >= 1007 && sensorVal <= 1011) {
+  if (sensorVal >= 980 && sensorVal <= 1015) {
     TX_Val = 90;
   }
-  if (sensorVal >= 1021 && sensorVal <= 1025) {
-    TX_Val = 100;
+  if (sensorVal >= 1020 && sensorVal <= 1030) {
+    TX_Val = 110;
   }
 
   analogWrite(TX_PIN1, 120);
