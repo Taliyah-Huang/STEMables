@@ -436,7 +436,5 @@ void loop() {
     playNum = 0;
   }
 
-  analogWrite(TX_Val, TX_PIN1);
-
   delay(10);
 }
