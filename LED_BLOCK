@@ -179,6 +179,6 @@ void loop() {
     analogWrite(ledPin, ledCommand);
     lastCommand = ledCommand;
   }
-  
+
   delay(10);
 }
