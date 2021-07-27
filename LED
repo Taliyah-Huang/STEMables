@@ -23,6 +23,7 @@ float remainder1 = 0.0;
 int storeNum1 = 0;
 bool channel1 = false;
 int channel1Count = 0;
+int trueFalseCount1 = 0;
 
 const int inputVal[13] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 101};
 const float scaleVal[13] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02, 4.0};
@@ -32,6 +33,7 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(RX_PIN1, INPUT);
   analogWrite(ledPin, 255);
+  Serial.begin(115200);
 }
 
 void loop() {
@@ -100,6 +102,12 @@ void loop() {
     peakVal1 = trueVals1[0];
   }
 
+  if (true1Count == 0 || true1Count == 1) {
+    trueFalseCount1++;
+  } else {
+    trueFalseCount1 = 0;
+  }
+
   //Check if the value is 120-230 to use as a signal
   for (int i = 0; i < 12; i++) {
     if (peakVal1 >= (120 + (i * 10)) - 4 && peakVal1 <= (120 + (i * 10)) + 4) {
@@ -107,6 +115,10 @@ void loop() {
       channel1 = true;
       peakVal1 = (120 + (i * 10));
     }
+  }
+
+  if (trueFalseCount1 > 100) {
+    channel1 = false;
   }
 
   //Set defaults if no number is connected
@@ -179,6 +191,8 @@ void loop() {
     analogWrite(ledPin, ledCommand);
     lastCommand = ledCommand;
   }
+
+  Serial.println(analogRead(A1));
 
   delay(10);
 }
