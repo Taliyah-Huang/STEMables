@@ -23,7 +23,6 @@ float remainder1 = 0.0;
 int storeNum1 = 0;
 bool channel1 = false;
 int channel1Count = 0;
-bool reset1 = false;
 int trueFalseCount1 = 0;
 
 int currentRead2 = 0;
@@ -39,7 +38,6 @@ float remainder2 = 0.0;
 int storeNum2 = 0;
 bool channel2 = false;
 int channel2Count = 0;
-bool reset2 = false;
 int trueFalseCount2 = 0;
 
 int currentRead3 = 0;
@@ -55,7 +53,6 @@ float remainder3 = 0.0;
 int storeNum3 = 0;
 bool channel3 = false;
 int channel3Count = 0;
-bool reset3 = false;
 int trueFalseCount3 = 0;
 
 const int inputVal[13] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 101};
