@@ -1,0 +1,249 @@
+const int RX_PIN1 = A1;
+const int RX_PIN2 = A2;
+const int TX_PIN1 = 0;
+
+int cycleCountDelay = 0;
+int TX_Val = 250;
+bool playType = false;
+
+int currentRead1 = 0;
+int true1Count = 0;
+int storage1 [1] = { -1};
+int averages1[5] = {0, 0, 0, 0, 0};
+int totalAve1 = 0;
+int trueVals1[2] = {0, 0};
+float trueVal1 = 0.0;
+int peakVal1 = 0;
+float remainder1 = 0.0;
+bool channel1 = false;
+int channel1Count = 0;
+int trueFalseCount1 = 0;
+
+int currentRead2 = 0;
+int true2Count = 0;
+int storage2 [1] = { -1};
+
+int averages2[5] = {0, 0, 0, 0, 0};
+int totalAve2 = 0;
+int trueVals2[2] = {0, 0};
+float trueVal2 = 0.0;
+int peakVal2 = 0;
+float remainder2 = 0.0;
+bool channel2 = false;
+int channel2Count = 0;
+int trueFalseCount2 = 0;
+
+const int inputVal[13] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 101};
+const float scaleVal[13] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02, 4.0};
+const int finalVal[13] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201, 405};
+
+void setup() {
+  pinMode(TX_PIN1, OUTPUT);
+  pinMode(RX_PIN1, INPUT);
+  pinMode(RX_PIN2, INPUT);
+}
+
+void loop() {
+  cycleCountDelay++;
+  currentRead1 = analogRead(RX_PIN1);
+  currentRead2 = analogRead(RX_PIN2);
+
+  //Count channel disconnected
+  if (channel1 == false) {
+    channel1Count++;
+  } else {
+    if (channel1Count != 0) {
+      channel1Count = 0;
+    }
+  }
+
+  if (channel2 == false) {
+    channel2Count++;
+  } else {
+    if (channel2Count != 0) {
+      channel2Count = 0;
+    }
+  }
+
+  channel1 = false;
+  channel2 = false;
+
+  //Running average of analogRead values
+  for (int i = 4; i > 0; i--) {
+    averages1[i] = averages1[i - 1];
+    averages2[i] = averages2[i - 1];
+  }
+  averages1[0] = currentRead1;
+  averages2[0] = currentRead2;
+
+  totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
+  totalAve2 = (averages2[4] + averages2[3] + averages2[2] + averages2[1] + averages2[0]) / 5;
+
+  //Scale from raw analog to 0-255
+  for (int i = 0; i < 12; i++) {
+    if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
+      trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
+    }
+    if (totalAve2 >= finalVal[i] - 2 && totalAve2 <= finalVal[i + 1] - 2) {
+      trueVal2 = totalAve2 / (int) map(totalAve2, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
+    }
+  }
+
+  //Anything greater than or equal to the value for 101 will be divided by 4
+  if (totalAve1 >= finalVal[12]) {
+    trueVal1 = totalAve1 / scaleVal[12];
+  }
+  if (totalAve2 >= finalVal[12]) {
+    trueVal2 = totalAve2 / scaleVal[12];
+  }
+
+  //Anything between 100~120 will be 100
+  if (totalAve1 >= 400 && totalAve1 <= 435) {
+    trueVal1 = 100.0;
+  }
+  if (totalAve2 >= 400 && totalAve2 <= 435) {
+    trueVal2 = 100.0;
+  }
+
+  //Round the value by 0.5
+  remainder1 = (float) trueVal1 - (int) trueVal1;
+  remainder2 = (float) trueVal2 - (int) trueVal2;
+
+  trueVal1 = (int) trueVal1;
+  trueVal2 = (int) trueVal2;
+
+  if (remainder1 >= 0.5) {
+    trueVal1++;
+  }
+  if (remainder2 >= 0.5) {
+    trueVal2++;
+  }
+
+  //Holding 2 values
+  trueVals1[1] = trueVals1[0];
+  trueVals2[1] = trueVals2[0];
+
+  trueVals1[0] = trueVal1;
+  trueVals2[0] = trueVal2;
+
+  //Count the number of "repeated" values
+  if (trueVals1[0] >= trueVals1[1] - 2 && trueVals1[0] <= trueVals1[1] + 2) {
+    true1Count++;
+  } else {
+    if (true1Count != 0) {
+      true1Count = 0;
+    }
+  }
+
+  if (trueVals2[0] >= trueVals2[1] - 2 && trueVals2[0] <= trueVals2[1] + 2) {
+    true2Count++;
+  } else {
+    if (true2Count != 0) {
+      true2Count = 0;
+    }
+  }
+
+  //Collect the most closest value once
+  if (true1Count == 10) {
+    peakVal1 = trueVals1[0];
+  }
+  if (true2Count == 10) {
+    peakVal2 = trueVals2[0];
+  }
+
+  if (true1Count == 0 || true1Count == 1) {
+    trueFalseCount1++;
+  } else {
+    trueFalseCount1 = 0;
+  }
+
+  if (true2Count == 0 || true2Count == 1) {
+    trueFalseCount2++;
+  } else {
+    trueFalseCount2 = 0;
+  }
+
+  if (peakVal1 >= 120 - 4 && peakVal1 <= 120 + 4) {
+    channel1 = true;
+    peakVal1 = 120;
+  }
+
+  if (peakVal2 >= 120 - 4 && peakVal2 <= 120 + 4) {
+    channel2 = true;
+    peakVal2 = 120;
+  }
+
+  if (trueFalseCount1 > 100) {
+    channel1 = false;
+  }
+
+  if (trueFalseCount2 > 100) {
+    channel2 = false;
+  }
+
+  if (channel1Count >= 100) {
+    storage1[0] = -1;
+    peakVal1 = -1;
+  } else {
+
+    //If it is 0-100, collect the value into the storage
+    if (peakVal1 <= 105) {
+      if (peakVal1 == 100) {
+        storage1[0] = 105;
+      } else {
+        storage1[0] = peakVal1;
+      }
+    }
+
+    if (peakVal1 >= 240 - 2 && peakVal1 <= 250 + 2) {
+      storage1[0] = 250;
+    }
+  }
+
+  if (channel2Count >= 100) {
+    storage2[0] = -1;
+    peakVal2 = -1;
+  } else {
+
+    //If it is 0-100, collect the value into the storage
+    if (peakVal2 <= 105) {
+      if (peakVal2 == 100) {
+        storage2[0] = 105;
+      } else {
+        storage2[0] = peakVal2;
+      }
+    }
+
+    if (peakVal2 >= 240 - 2 && peakVal2 <= 250 + 2) {
+      storage2[0] = 250;
+    }
+
+  }
+
+  if (playType == false) {
+    if (cycleCountDelay < 25) {
+      TX_Val = 120;
+    } else {
+      cycleCountDelay = 0;
+      playType = true;
+    }
+  } else {
+    if (cycleCountDelay < 25) {
+      if (storage1[0] == storage2[0]) { //EQUAL
+        //if (storage1[0] != storage2[0]) { //NOT EQUAL
+        //if (storage1[0] > storage2[0]) { //GREATER THAN
+        //if (storage1[0] < storage2[0]) { //LESS THAN
+        //if (storage1[0] >= storage2[0]) { //GREATER THAN OR EQUAL TO
+        //if (storage1[0] <= storage2[0]) { //LESS THAN OR EQUAL TO
+        TX_Val = 100;
+      } else {
+        TX_Val = 250;
+      }
+    } else {
+      cycleCountDelay = 0;
+      playType = false;
+    }
+  }
+
+  delay(10);
+}
