@@ -1,79 +1,58 @@
-const int ledPin = 1;
-const int RX_PIN1 = A1;
+#define RX_PIN1 A1
+#define ledPin 1
 
-bool play = false;
-int playNum = 0;
-bool extraBlank = false;
-int ledCommand = 255;
-int cycleCountDelay = 0;
-int lastCommand = 255;
+uint8_t playNum = 0;
+uint8_t ledCommand = 255;
+uint8_t cycleCountDelay = 0;
+uint8_t lastCommand = 255;
 bool newVal = true;
+uint8_t disconnectCount = 0;
+bool disconnected = false;
+uint8_t speeds[4] = {100, 50, 25, 12};
+uint8_t speedVal = 50;
+
+uint8_t totalVals1[3] = {0, 0, 99};
+bool collectTotalVals1 = false;
+uint8_t sameVals1 = 0;
+bool valArray1 = false;
+uint8_t arrayType1 = 0;
+bool valSet1 = false;
 
 int currentRead1 = 0;
-int true1Count = 0;
-int storage1 [12] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-int store1Count = 0;
+uint8_t storage1 [99] = {};
+uint8_t store1Count = 100;
 int averages1[5] = {0, 0, 0, 0, 0};
 int totalAve1 = 0;
-int trueVals1[2] = {0, 0};
 float trueVal1 = 0.0;
-int peakVal1 = -1;
+uint8_t trueVals1[2] = {0, 0};
+int peakVal1 = 0;
 float remainder1 = 0.0;
-int storeNum1 = 0;
-bool channel1 = false;
-int channel1Count = 0;
-int trueFalseCount1 = 0;
-
-const int inputVal[13] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 101};
-const float scaleVal[13] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02, 4.0};
-const int finalVal[13] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201, 405};
+uint8_t storeNum1 = 0;
+uint8_t storeTotalVals1 = 0;
 
 void setup() {
-  pinMode(ledPin, OUTPUT);
   pinMode(RX_PIN1, INPUT);
+  pinMode(ledPin, OUTPUT);
   analogWrite(ledPin, 255);
-  Serial.begin(115200);
+
+  for (uint8_t i = 0; i < 99; i++) {
+    storage1[i] = 255;
+  }
 }
 
 void loop() {
   cycleCountDelay++;
   currentRead1 = analogRead(RX_PIN1);
 
-  //Count channel disconnected
-  if (channel1 == false) {
-    channel1Count++;
-  } else {
-    if (channel1Count != 0) {
-      channel1Count = 0;
-    }
-  }
-
-  channel1 = false;
-
   //Running average of analogRead values
-  for (int i = 4; i > 0; i--) {
+  for (uint8_t i = 4; i > 0; i--) {
     averages1[i] = averages1[i - 1];
   }
   averages1[0] = currentRead1;
 
   totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
 
-  //Scale from raw analog to 0-255
-  for (int i = 0; i < 12; i++) {
-    if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
-      trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
-    }
-  }
-
-  //Anything greater than or equal to the value for 101 will be divided by 4
-  if (totalAve1 >= finalVal[12]) {
-    trueVal1 = totalAve1 / scaleVal[12];
-  }
-
-  //Anything between 100~120 will be 100
-  if (totalAve1 >= 400 && totalAve1 <= 435) {
-    trueVal1 = 100.0;
-  }
+  trueVal1 = ((float) totalAve1 / 4);
 
   //Round the value by 0.5
   remainder1 = (float) trueVal1 - (int) trueVal1;
@@ -83,91 +62,148 @@ void loop() {
     trueVal1++;
   }
 
-  //Holding 2 values
+  if ((averages1[0] - averages1[1]) < 0 && (averages1[1] - averages1[2]) < 0 && (averages1[2] - averages1[3]) < 0 || (averages1[0] - averages1[1]) >= 0 && (averages1[1] - averages1[2]) >= 0 && (averages1[2] - averages1[3]) >= 0) {
+    disconnectCount = 0;
+    disconnected = false;
+  } else {
+    disconnectCount++;
+  }
+
   trueVals1[1] = trueVals1[0];
   trueVals1[0] = trueVal1;
 
-  //Count the number of "repeated" values
-  if (trueVals1[0] >= trueVals1[1] - 2 && trueVals1[0] <= trueVals1[1] + 2) {
-    true1Count++;
+  if (trueVals1[0] <= trueVals1[1] + 2 && trueVals1[0] >= trueVals1[1] - 2) {
+    sameVals1++;
   } else {
-    if (true1Count != 0) {
-      true1Count = 0;
+    sameVals1 = 0;
+  }
+
+  if (trueVal1 >= 240) {
+    arrayType1++;
+    if (arrayType1 > 5) {
+      arrayType1 = 10;
+      valArray1 = true;
     }
   }
 
-  //Collect the most closest value once
-  if (true1Count == 10) {
-    peakVal1 = trueVals1[0];
-  }
+  if (sameVals1 == 5) {
+    peakVal1 = trueVals1[1];
 
-  if (true1Count == 0 || true1Count == 1) {
-    trueFalseCount1++;
-  } else {
-    trueFalseCount1 = 0;
-  }
+    if (valArray1 == true) {
+      for (uint8_t i = 0; i < 4; i++) {
+        if (peakVal1 <= ((i + 4) * 10) + 2 && peakVal1 >= ((i + 4) * 10) - 2) {
+          speedVal = speeds[i];
+        }
+      }
 
-  //Check if the value is 120-230 to use as a signal
-  for (int i = 0; i < 12; i++) {
-    if (peakVal1 >= (120 + (i * 10)) - 4 && peakVal1 <= (120 + (i * 10)) + 4) {
-      storeNum1 = i;
-      channel1 = true;
-      peakVal1 = (120 + (i * 10));
-    }
-  }
+      if (peakVal1 <= 30 + 2 && peakVal1 >= 30 - 2) {
+        collectTotalVals1 = true;
+      }
 
-  if (trueFalseCount1 > 100) {
-    channel1 = false;
-  }
-
-  //Set defaults if no number is connected
-  if (channel1Count >= 100) {
-    for (int i = 0; i < 12; i++) {
-      storage1[i] = -1;
-    }
-    storage1[0] = 10;
-    storage1[1] = 100;
-    storage1[2] = 0;
-  } else {
-    //If it is 0-100, collect the value into the storage
-    if (peakVal1 <= 105 && channel1Count < 100) {
-      storage1[storeNum1] = peakVal1;
-    }
-
-    if (peakVal1 >= 240 - 2 && peakVal1 <= 250 + 2 && channel1Count < 100) {
-      storage1[storeNum1] = 0;
-    }
-
-    //Check how many are stored
-    for (int i = 11; i >= 0; i--) {
-      if (storage1[i] == -1) {
-        store1Count = i - 1;
+      if (peakVal1 > 122 && peakVal1 < 238) {
+        if (collectTotalVals1 == true) {
+          storeTotalVals1++;
+        } else {
+          storeNum1++;
+        }
       }
     }
+
+    if (storeNum1 >= totalVals1[2]) {
+      storeNum1 = 0;
+    }
+
+    if (peakVal1 <= 120 + 2 && peakVal1 >= 120 - 2) {
+      valSet1 = true;
+      valArray1 = false;
+      for (uint8_t i = 1; i < 99; i++) {
+        storage1[i] = 255;
+      }
+      storeNum1 = 0;
+    }
+    peakVal1 = peakVal1 - 130;
+
+    if (peakVal1 >= 100) {
+      peakVal1 = 100;
+    }
+    if (peakVal1 <= 0 && peakVal1 > -8) {
+      peakVal1 = 0;
+    }
+
+    if (disconnected == false) {
+      if (valArray1 == true && valSet1 == false) {
+        if (collectTotalVals1 == true) {
+          for (int i = 0; i < 10; i++) {
+            if (peakVal1 >= (i * 10) - 2 && peakVal1 <= (i * 10) + 2) {
+              totalVals1[storeTotalVals1 - 1] = i;
+            }
+          }
+          if (storeTotalVals1 == 2) {
+            totalVals1[2] = (totalVals1[0] * 10) + totalVals1[1];
+            collectTotalVals1 = false;
+            storeTotalVals1 = 0;
+            for (uint8_t i = totalVals1[2]; i < 99; i++) {
+              storage1[i] = 255;
+            }
+          }
+        } else {
+          if (peakVal1 >= 0 && peakVal1 <= 100) {
+            storage1[storeNum1] = peakVal1;
+          }
+        }
+      }
+      if (valSet1 == true && valArray1 == false) {
+        storeNum1 = 0;
+        if (peakVal1 >= 0 && peakVal1 <= 100) {
+          storage1[storeNum1] = peakVal1;
+        }
+      }
+    }
+
   }
 
-  //If there is an odd number of values in the storage, make the last one have brightness of 0 at the length of time of the last stored value
-  if (store1Count == 0 || store1Count == 2 || store1Count == 4 || store1Count == 6 || store1Count == 8 || store1Count == 10) {
-    extraBlank = true;
+  if (disconnected == false) {
+    if (valSet1 == false && valArray1 == false) {
+      storeNum1 = 0;
+      storage1[storeNum1] = peakVal1;
+    }
+  }
+
+  if (disconnectCount > 50) {
+    disconnectCount = 60;
+    analogWrite(ledPin, 255);
+    disconnected = true;
+    valArray1 = false;
+    valSet1 = false;
+    storeNum1 = 0;
+    for (uint8_t i = 1; i < 99; i++) {
+      storage1[i] = 255;
+    }
+    storage1[0] = 100;
+  }
+
+  for (uint8_t i = 98; i > 0; i--) {
+    if (storage1[i] == 255) {
+      store1Count = i - 1;
+    }
   }
 
   if (playNum > store1Count) {
     playNum = 0;
   }
 
-  //If there is only one value, use that as the brightness
-  if (store1Count == 0) {
-    ledCommand = (int) map(storage1[0], 0, 100, 0, 255);
+  if (storage1[0] == 255) {
+    ledCommand = 255;
   } else {
-    if (cycleCountDelay < storage1[playNum] * 2) { //Repeat this for as many times as the length says
-      if (playNum == store1Count && extraBlank == true) { //If this is on the last stored value that is an odd number and there is no next number for the brightness, set the brightness to 0
-        ledCommand = 0;
-      } else {
-        ledCommand = (int) map(storage1[playNum + 1], 0, 100, 0, 255); //Scale from 0-100 to 0-255
-      }
+    if (store1Count == 0) {
+      ledCommand = (int) map(storage1[0], 0, 100, 0, 255);
     } else {
-      cycleCountDelay = 0;
-      playNum += 2; //Move up 2 on the storage
+      if (cycleCountDelay < speedVal) { //Repeat this for as many times as the length says
+        ledCommand = (int) map(storage1[playNum], 0, 100, 0, 255); //Scale from 0-100 to 0-255
+      } else {
+        cycleCountDelay = 0;
+        playNum++;
+      }
     }
   }
 
@@ -182,8 +218,6 @@ void loop() {
     analogWrite(ledPin, ledCommand);
     lastCommand = ledCommand;
   }
-
-  Serial.println(analogRead(A1));
 
   delay(10);
 }
