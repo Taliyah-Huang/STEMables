@@ -2,21 +2,25 @@
 #define ledPin 1
 
 uint8_t playNum = 0;
-uint8_t ledCommand = 255;
+int ledCommand = 262;
 uint8_t cycleCountDelay = 0;
-uint8_t lastCommand = 255;
+uint8_t cycleClock = 0;
+int lastCommand = 262;
 bool newVal = true;
-uint8_t disconnectCount = 0;
-bool disconnected = false;
+uint8_t disconnectCount1 = 0;
+uint8_t arrayDisconnect1 = 0;
+uint8_t setDisconnect1 = 0;
+bool disconnected1 = false;
 uint8_t speeds[4] = {100, 50, 25, 12};
-uint8_t speedVal = 50;
+uint8_t speedVal1 = 55;
 
 uint8_t totalVals1[3] = {0, 0, 99};
 bool collectTotalVals1 = false;
+bool collectSpeed1 = false;
 uint8_t sameVals1 = 0;
 bool valArray1 = false;
-uint8_t arrayType1 = 0;
 bool valSet1 = false;
+uint8_t simpleValType1 = 0;
 
 int currentRead1 = 0;
 uint8_t storage1 [99] = {};
@@ -24,11 +28,12 @@ uint8_t store1Count = 100;
 int averages1[5] = {0, 0, 0, 0, 0};
 int totalAve1 = 0;
 float trueVal1 = 0.0;
-uint8_t trueVals1[2] = {0, 0};
+uint8_t trueVals1[5] = {0, 0, 0, 0, 0};
 int peakVal1 = 0;
 float remainder1 = 0.0;
 uint8_t storeNum1 = 0;
 uint8_t storeTotalVals1 = 0;
+int peakDetection1 = 0;
 
 void setup() {
   pinMode(RX_PIN1, INPUT);
@@ -42,6 +47,7 @@ void setup() {
 
 void loop() {
   cycleCountDelay++;
+  cycleClock++;
   currentRead1 = analogRead(RX_PIN1);
 
   //Running average of analogRead values
@@ -62,144 +68,221 @@ void loop() {
     trueVal1++;
   }
 
-  if ((averages1[0] - averages1[1]) < 0 && (averages1[1] - averages1[2]) < 0 && (averages1[2] - averages1[3]) < 0 || (averages1[0] - averages1[1]) >= 0 && (averages1[1] - averages1[2]) >= 0 && (averages1[2] - averages1[3]) >= 0) {
-    disconnectCount = 0;
-    disconnected = false;
-  } else {
-    disconnectCount++;
-  }
-
-  trueVals1[1] = trueVals1[0];
-  trueVals1[0] = trueVal1;
-
-  if (trueVals1[0] <= trueVals1[1] + 2 && trueVals1[0] >= trueVals1[1] - 2) {
-    sameVals1++;
-  } else {
-    sameVals1 = 0;
-  }
-
-  if (trueVal1 >= 240) {
-    arrayType1++;
-    if (arrayType1 > 5) {
-      arrayType1 = 10;
-      valArray1 = true;
+  if (valSet1 == true || simpleValType1 == 251) {
+    if (trueVal1 < 115) {
+      disconnectCount1 += 10;
     }
   }
 
-  if (sameVals1 == 5) {
-    peakVal1 = trueVals1[1];
+  if (valSet1 == false && valArray1 == false) {
+    if (!(trueVal1 < 115)) {
+      disconnectCount1 = 0;
+      disconnected1 = false;
+    }
+  }
 
+  for (uint8_t i = 4; i > 0; i--) {
+    trueVals1[i] = trueVals1[i - 1];
+  }
+  trueVals1[0] = trueVal1;
+
+  sameVals1 = 0;
+  for (uint8_t i = 4; i > 0; i--) {
+    if (trueVals1[i] - trueVals1[0] >= -3 && trueVals1[i] - trueVals1[0] <= 3) {
+      sameVals1++;
+    }
+  }
+
+  if (sameVals1 == 4) {
+    peakDetection1++;
+  } else {
+    peakDetection1 = 0;
+  }
+
+  if (trueVal1 >= 248) {
+    disconnectCount1 = 0;
+    disconnected1 = false;
+    valArray1 = true;
+    arrayDisconnect1 = 0;
+  } else {
     if (valArray1 == true) {
-      for (uint8_t i = 0; i < 4; i++) {
-        if (peakVal1 <= ((i + 4) * 10) + 2 && peakVal1 >= ((i + 4) * 10) - 2) {
-          speedVal = speeds[i];
+      arrayDisconnect1++;
+    }
+  }
+  if (arrayDisconnect1 > 150) {
+    disconnectCount1 = 60;
+  }
+
+  if (trueVal1 >= 120 - 3 && trueVal1 <= 120 + 3) {
+    setDisconnect1 = 0;
+  } else {
+    if (valSet1 == true) {
+      setDisconnect1++;
+    }
+  }
+  if (setDisconnect1 > 50) {
+    disconnectCount1 = 60;
+  }
+
+  if (disconnected1 == false) {
+    if (trueVal1 >= 248) {
+      valSet1 = false;
+      simpleValType1 = 0;
+    }
+    if (trueVal1 > 125 && trueVal1 < 240) {
+      simpleValType1++;
+    }
+
+    if (valSet1 == false && valArray1 == false) {
+      storeNum1 = 0;
+      if (trueVal1 - 130 >= -8 && trueVal1 - 130 <= 105) {
+        if (trueVal1 - 130 >= -8 && trueVal1 <= 0) {
+          storage1[0] = 0;
+        }
+        if (trueVal1 - 130 >= 100 && trueVal1 - 130 <= 105) {
+          storage1[0] = 100;
+        }
+        if (trueVal1 - 130 >= 0 && trueVal1 - 130 <= 100) {
+          storage1[0] = trueVal1 - 130;
         }
       }
+    }
+  }
 
-      if (peakVal1 <= 30 + 2 && peakVal1 >= 30 - 2) {
-        collectTotalVals1 = true;
-      }
+  if ((peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock > 20)) {
+    peakVal1 = (trueVals1[0] + trueVals1[1] + trueVals1[2] + trueVals1[3] + trueVals1[4]) / 5;
+    //Serial.println(peakVal1);
+    if (peakVal1 <= 100 + 5 && peakVal1 >= 100 - 5) {
+      collectTotalVals1 = true;
+      valArray1 = true;
+    }
 
-      if (peakVal1 > 122 && peakVal1 < 238) {
-        if (collectTotalVals1 == true) {
-          storeTotalVals1++;
-        } else {
+    if (valSet1 == false) {
+      if (peakVal1 > 125 && peakVal1 < 240) {
+        if (collectTotalVals1 == false && collectSpeed1 == false) {
           storeNum1++;
         }
       }
     }
 
-    if (storeNum1 >= totalVals1[2]) {
-      storeNum1 = 0;
+    if (storeNum1 > totalVals1[2]) {
+      storeNum1 = 1;
     }
 
-    if (peakVal1 <= 120 + 2 && peakVal1 >= 120 - 2) {
+    if (peakVal1 <= 120 + 3 && peakVal1 >= 120 - 3) {
       valSet1 = true;
       valArray1 = false;
+      simpleValType1 = 0;
       for (uint8_t i = 1; i < 99; i++) {
         storage1[i] = 255;
       }
-      storeNum1 = 0;
     }
-    peakVal1 = peakVal1 - 130;
 
-    if (peakVal1 >= 100) {
+    peakVal1 -= 130;
+
+    if (peakVal1 >= 100 && peakVal1 < 108) {
       peakVal1 = 100;
     }
     if (peakVal1 <= 0 && peakVal1 > -8) {
       peakVal1 = 0;
     }
 
-    if (disconnected == false) {
-      if (valArray1 == true && valSet1 == false) {
+    if (disconnected1 == false) {
+      if (valSet1 == false) {
         if (collectTotalVals1 == true) {
-          for (int i = 0; i < 10; i++) {
-            if (peakVal1 >= (i * 10) - 2 && peakVal1 <= (i * 10) + 2) {
-              totalVals1[storeTotalVals1 - 1] = i;
+          for (uint8_t i = 0; i < 10; i++) {
+            if (peakVal1 >= (i * 10) - 4 && peakVal1 <= (i * 10) + 4) {
+              totalVals1[storeTotalVals1] = i;
+              storeTotalVals1++;
             }
           }
           if (storeTotalVals1 == 2) {
             totalVals1[2] = (totalVals1[0] * 10) + totalVals1[1];
             collectTotalVals1 = false;
+            collectSpeed1 = true;
             storeTotalVals1 = 0;
             for (uint8_t i = totalVals1[2]; i < 99; i++) {
               storage1[i] = 255;
             }
           }
         } else {
-          if (peakVal1 >= 0 && peakVal1 <= 100) {
-            storage1[storeNum1] = peakVal1;
+          if (collectSpeed1 == true) {
+            if (peakVal1 >= 0 && peakVal1 <= 100) {
+              for (uint8_t i = 0; i < 4; i++) {
+                if (peakVal1 <= (i * 25) + 5 && peakVal1 >= (i * 25) - 5) {
+                  speedVal1 = speeds[i];
+                  valArray1 = true;
+                  collectSpeed1 = false;
+                }
+              }
+            }
+          } else {
+            if (peakVal1 >= 0 && peakVal1 <= 100) {
+              storage1[storeNum1 - 1] = peakVal1;
+              if (storage1[0] != 0) {
+              }
+            }
           }
         }
       }
-      if (valSet1 == true && valArray1 == false) {
+      if (valSet1 == true) {
         storeNum1 = 0;
         if (peakVal1 >= 0 && peakVal1 <= 100) {
-          storage1[storeNum1] = peakVal1;
+          storage1[0] = peakVal1;
         }
       }
     }
-
+    cycleClock = 0;
   }
 
-  if (disconnected == false) {
-    if (valSet1 == false && valArray1 == false) {
-      storeNum1 = 0;
-      storage1[storeNum1] = peakVal1;
-    }
-  }
-
-  if (disconnectCount > 50) {
-    disconnectCount = 60;
-    analogWrite(ledPin, 255);
-    disconnected = true;
+  if (simpleValType1 > 250) {
+    simpleValType1 = 251;
     valArray1 = false;
     valSet1 = false;
     storeNum1 = 0;
-    for (uint8_t i = 1; i < 99; i++) {
+  }
+
+  if (disconnectCount1 > 50) {
+    disconnectCount1 = 60;
+    disconnected1 = true;
+    valArray1 = false;
+    valSet1 = false;
+    simpleValType1 = 0;
+    speedVal1 = 55;
+    storeNum1 = 0;
+    cycleCountDelay = 0;
+    playNum = 0;
+    for (uint8_t i = 0; i < 99; i++) {
       storage1[i] = 255;
     }
-    storage1[0] = 100;
+  }
+
+  if (disconnected1 == true || valSet1 == true) {
+    cycleClock = 0;
   }
 
   for (uint8_t i = 98; i > 0; i--) {
     if (storage1[i] == 255) {
-      store1Count = i - 1;
+      store1Count = i;
     }
   }
 
-  if (playNum > store1Count) {
+  if (playNum == store1Count) {
     playNum = 0;
   }
 
   if (storage1[0] == 255) {
     ledCommand = 255;
   } else {
-    if (store1Count == 0) {
-      ledCommand = (int) map(storage1[0], 0, 100, 0, 255);
+    if (store1Count == 1) {
+      if (storage1[0] != 255) {
+        ledCommand = (int) map(storage1[0], 0, 100, 0, 255);
+      }
     } else {
-      if (cycleCountDelay < speedVal) { //Repeat this for as many times as the length says
-        ledCommand = (int) map(storage1[playNum], 0, 100, 0, 255); //Scale from 0-100 to 0-255
+      if (cycleCountDelay < speedVal1) {
+        if (storage1[playNum] != 255) {
+          ledCommand = (int) map(storage1[playNum], 0, 100, 0, 255);
+        }
       } else {
         cycleCountDelay = 0;
         playNum++;
@@ -207,7 +290,7 @@ void loop() {
     }
   }
 
-  //Only call the analogWrite if there is a significantly different value to send
+  //Only call the tone if there is a significantly different value to send
   if (lastCommand > ledCommand + 1 || lastCommand < ledCommand - 1) {
     newVal = true;
   } else {
@@ -219,5 +302,5 @@ void loop() {
     lastCommand = ledCommand;
   }
 
-  delay(10);
+  delay(11);
 }
