@@ -1,88 +1,72 @@
-const int buzzerPin = 4;
-const int RX_PIN1 = A1;
+#define RX_PIN1 A1
+#define buzzerPin 4
 
-bool play = false;
-int playNum = 0;
-bool extraBlank = false;
+bool noToneCommand = false;
+uint8_t playNum = 0;
+float buzzerRemainder = 0.0;
 int buzzerCommand = 262;
-int cycleCountDelay = 0;
+uint8_t cycleCountDelay = 0;
+uint8_t cycleClock = 0;
 int lastCommand = 262;
 bool newVal = true;
-bool reset = false;
-bool noToneCommand = false;
-float octave = 0.0;
-float frequency = 0.0;
+uint8_t disconnectCount1 = 0;
+uint8_t arrayDisconnect1 = 0;
+uint8_t setDisconnect1 = 0;
+bool disconnected1 = false;
+uint8_t speeds[4] = {100, 50, 25, 12};
+uint8_t speedVal1 = 55;
+
+uint8_t totalVals1[3] = {0, 0, 99};
+bool collectTotalVals1 = false;
+bool collectSpeed1 = false;
+uint8_t sameVals1 = 0;
+bool valArray1 = false;
+bool valSet1 = false;
+uint8_t simpleValType1 = 0;
 
 int currentRead1 = 0;
-int true1Count = 0;
-int storage1 [12] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-int store1Count = 0;
+uint8_t storage1 [99] = {};
+uint8_t store1Count = 100;
 int averages1[5] = {0, 0, 0, 0, 0};
 int totalAve1 = 0;
-int trueVals1[2] = {0, 0};
 float trueVal1 = 0.0;
-int peakVal1 = -1;
+uint8_t trueVals1[5] = {0, 0, 0, 0, 0};
+int peakVal1 = 0;
 float remainder1 = 0.0;
-int storeNum1 = -1;
-bool channel1 = false;
-int channel1Count = 0;
-int trueFalseCount1 = 0;
+uint8_t storeNum1 = 0;
+uint8_t storeTotalVals1 = 0;
+int peakDetection1 = 0;
 
-const int frequencies[66] = {65, 69, 73, 78, 82, 87, 92, 98, 104, 110, 117, 123, //C2 - B2
-                             131, 139, 147, 156, 165, 175, 185, 196, 208, 220, 233, 247, //C3 - B3
-                             262, 277, 294, 311, 330, 349, 370, 392, 415, 440, 466, 494, //C4 - B4
-                             523, 554, 587, 622, 659, 698, 740, 784, 831, 880, 932, 988, //C5 - B5
-                             1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661, 1760, 1865, 1976, //C6 - B6
-                             2093, 2217, 23349, 2489, 2637, 2794 //C7 - F7
-                            };
-
-const int inputVal[13] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 101};
-const float scaleVal[13] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02, 4.0};
-const int finalVal[13] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201, 405};
+const int frequencies[21] =
+  //{131, 139, 147, 156, 165, 175, 185, 196, 208, 220, 233, 247, 262, 277, 294, 311, 330, 349, 370, 392, 415}; //Range 1: C3 - G#4
+  //{262, 277, 294, 311, 330, 349, 370, 392, 415, 440, 466, 494, 523, 554, 587, 622, 659, 698, 740, 784, 831}; //Range 2: C4 - G#5
+{523, 554, 587, 622, 659, 698, 740, 784, 831, 880, 932, 988, 1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661}; //Range 3: C5 - G#6
+//{1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661, 1760, 1865, 1976, 2093, 2217, 23349, 2489, 2637, 2794, 2960, 3136, 3322}; //Range 4: C6 - G#7
 
 void setup() {
-  pinMode(buzzerPin, OUTPUT);
   pinMode(RX_PIN1, INPUT);
-  tone(buzzerPin, 262);
+  pinMode(buzzerPin, OUTPUT);
+  tone(buzzerPin, frequencies[0]);
+
+  for (uint8_t i = 0; i < 99; i++) {
+    storage1[i] = 255;
+  }
 }
 
 void loop() {
   cycleCountDelay++;
+  cycleClock++;
   currentRead1 = analogRead(RX_PIN1);
 
-  //Count channel disconnected
-  if (channel1 == false) {
-    channel1Count++;
-  } else {
-    if (channel1Count != 0) {
-      channel1Count = 0;
-    }
-  }
-
-  channel1 = false;
-
   //Running average of analogRead values
-  for (int i = 4; i > 0; i--) {
+  for (uint8_t i = 4; i > 0; i--) {
     averages1[i] = averages1[i - 1];
   }
   averages1[0] = currentRead1;
 
   totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
 
-  for (int i = 0; i < 12; i++) {
-    if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
-      trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
-    }
-  }
-
-  //Anything greater than or equal to the value for 101 will be divided by 4
-  if (totalAve1 >= finalVal[12]) {
-    trueVal1 = totalAve1 / scaleVal[12];
-  }
-
-  if (totalAve1 >= 400 && totalAve1 <= 435) {
-    trueVal1 = 100.0;
-  }
+  trueVal1 = ((float) totalAve1 / 4);
 
   //Round the value by 0.5
   remainder1 = (float) trueVal1 - (int) trueVal1;
@@ -92,157 +76,257 @@ void loop() {
     trueVal1++;
   }
 
-  //Holding 2 values
-  trueVals1[1] = trueVals1[0];
+  if (valSet1 == true || simpleValType1 == 251) {
+    if (trueVal1 < 115) {
+      disconnectCount1 += 10;
+    }
+  }
+
+  if (valSet1 == false && valArray1 == false) {
+    if (!(trueVal1 < 115)) {
+      disconnectCount1 = 0;
+      disconnected1 = false;
+    }
+  }
+
+  for (uint8_t i = 4; i > 0; i--) {
+    trueVals1[i] = trueVals1[i - 1];
+  }
   trueVals1[0] = trueVal1;
 
-  //Count the number of "repeated" values
-  if (trueVals1[0] >= trueVals1[1] - 2 && trueVals1[0] <= trueVals1[1] + 2) {
-    true1Count++;
+  sameVals1 = 0;
+  for (uint8_t i = 4; i > 0; i--) {
+    if (trueVals1[i] - trueVals1[0] >= -3 && trueVals1[i] - trueVals1[0] <= 3) {
+      sameVals1++;
+    }
+  }
+
+  if (sameVals1 == 4) {
+    peakDetection1++;
   } else {
-    if (true1Count != 0) {
-      true1Count = 0;
-    }
+    peakDetection1 = 0;
   }
 
-  //Collect the most closest value once
-  if (true1Count == 10) {
-    peakVal1 = trueVals1[0];
-  }
-
-  if (true1Count == 0 || true1Count == 1) {
-    trueFalseCount1++;
+  if (trueVal1 >= 248) {
+    disconnectCount1 = 0;
+    disconnected1 = false;
+    valArray1 = true;
+    arrayDisconnect1 = 0;
   } else {
-    trueFalseCount1 = 0;
-  }
-
-  //Check if the value is 120-230 to use as a signal
-  for (int i = 0; i < 11; i++) {
-    if (peakVal1 >= (120 + (i * 10)) - 4 && peakVal1 <= (120 + (i * 10)) + 4) {
-      storeNum1 = i;
-      channel1 = true;
-      peakVal1 = (120 + (i * 10));
+    if (valArray1 == true) {
+      arrayDisconnect1++;
     }
   }
-
-  if (trueFalseCount1 > 100) {
-    channel1 = false;
+  if (arrayDisconnect1 > 150) {
+    disconnectCount1 = 60;
   }
 
-  //Set defaults if no number is connected
-  if (channel1Count >= 120) {
-    for (int i = 0; i < 12; i++) {
-      storage1[i] = -1;
-    }
-    storage1[0] = 50;
-    storage1[1] = 0;
-    reset = true;
+  if (trueVal1 >= 120 - 3 && trueVal1 <= 120 + 3) {
+    setDisconnect1 = 0;
   } else {
+    if (valSet1 == true) {
+      setDisconnect1++;
+    }
+  }
+  if (setDisconnect1 > 50) {
+    disconnectCount1 = 60;
+  }
 
-    //If it is 0-100, collect the value into the storage
-    if (peakVal1 <= 105 && channel1Count < 100) {
-      storage1[storeNum1] = peakVal1;
+  if (disconnected1 == false) {
+    if (trueVal1 >= 248) {
+      valSet1 = false;
+      simpleValType1 = 0;
+    }
+    if (trueVal1 > 125 && trueVal1 < 240) {
+      simpleValType1++;
     }
 
-    if (peakVal1 >= 240 - 2 && peakVal1 <= 250 + 2 && channel1Count < 100) {
-      storage1[storeNum1] = 250;
-    }
-
-    //Check how many are stored
-    if (storage1[0] != -1) {
-      for (int i = 11; i >= 1; i--) {
-        if (storage1[i] == -1) {
-          store1Count = i - 1;
+    if (valSet1 == false && valArray1 == false) {
+      storeNum1 = 0;
+      if (trueVal1 - 130 >= -8 && trueVal1 - 130 <= 105) {
+        if (trueVal1 - 130 >= -8 && trueVal1 <= 0) {
+          storage1[0] = 0;
+        }
+        if (trueVal1 - 130 >= 100 && trueVal1 - 130 <= 105) {
+          storage1[0] = 100;
+        }
+        if (trueVal1 - 130 >= 0 && trueVal1 - 130 <= 100) {
+          storage1[0] = trueVal1 - 130;
         }
       }
-    } else {
-      store1Count = -1;
     }
   }
 
-  //If there is an odd number of values in the storage, make the last one have brightness of 0 at the length of time of the last stored value
-  if (store1Count == 2 || store1Count == 4 || store1Count == 6 || store1Count == 8 || store1Count == 10) {
-    extraBlank = true;
-  }
-
-  if (playNum > store1Count) {
-    playNum = 1;
-  }
-
-  //If there is only one value, use that as the brightness
-  if (store1Count == 0) {
-    if (storage1[0] == 250) {
-      noToneCommand = true;
-      buzzerCommand = -1;
-    } else {
-      noToneCommand = false;
-      buzzerCommand = frequencies[((int) map(storage1[0], 0, 100, 0, 30)) + 24];
+  if ((peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock > 20)) {
+    peakVal1 = (trueVals1[0] + trueVals1[1] + trueVals1[2] + trueVals1[3] + trueVals1[4]) / 5;
+    //Serial.println(peakVal1);
+    if (peakVal1 <= 100 + 5 && peakVal1 >= 100 - 5) {
+      collectTotalVals1 = true;
+      valArray1 = true;
     }
+
+    if (valSet1 == false) {
+      if (peakVal1 > 125 && peakVal1 < 240) {
+        if (collectTotalVals1 == false && collectSpeed1 == false) {
+          storeNum1++;
+        }
+      }
+    }
+
+    if (storeNum1 > totalVals1[2]) {
+      storeNum1 = 1;
+    }
+
+    if (peakVal1 <= 120 + 3 && peakVal1 >= 120 - 3) {
+      valSet1 = true;
+      valArray1 = false;
+      simpleValType1 = 0;
+      for (uint8_t i = 1; i < 99; i++) {
+        storage1[i] = 255;
+      }
+    }
+
+    peakVal1 -= 130;
+
+    if (peakVal1 >= 100 && peakVal1 < 108) {
+      peakVal1 = 100;
+    }
+    if (peakVal1 <= 0 && peakVal1 > -8) {
+      peakVal1 = 0;
+    }
+
+    if (disconnected1 == false) {
+      if (valSet1 == false) {
+        if (collectTotalVals1 == true) {
+          for (uint8_t i = 0; i < 10; i++) {
+            if (peakVal1 >= (i * 10) - 4 && peakVal1 <= (i * 10) + 4) {
+              totalVals1[storeTotalVals1] = i;
+              storeTotalVals1++;
+            }
+          }
+          if (storeTotalVals1 == 2) {
+            totalVals1[2] = (totalVals1[0] * 10) + totalVals1[1];
+            collectTotalVals1 = false;
+            collectSpeed1 = true;
+            storeTotalVals1 = 0;
+            for (uint8_t i = totalVals1[2]; i < 99; i++) {
+              storage1[i] = 255;
+            }
+          }
+        } else {
+          if (collectSpeed1 == true) {
+            if (peakVal1 >= 0 && peakVal1 <= 100) {
+              for (uint8_t i = 0; i < 4; i++) {
+                if (peakVal1 <= (i * 25) + 5 && peakVal1 >= (i * 25) - 5) {
+                  speedVal1 = speeds[i];
+                  valArray1 = true;
+                  collectSpeed1 = false;
+                }
+              }
+            }
+          } else {
+            if (peakVal1 >= 0 && peakVal1 <= 100) {
+              storage1[storeNum1 - 1] = peakVal1;
+              if (storage1[0] != 0) {
+              }
+            }
+          }
+        }
+      }
+      if (valSet1 == true) {
+        storeNum1 = 0;
+        if (peakVal1 >= 0 && peakVal1 <= 100) {
+          storage1[0] = peakVal1;
+        }
+      }
+    }
+    cycleClock = 0;
+  }
+
+  if (simpleValType1 > 250) {
+    simpleValType1 = 251;
+    valArray1 = false;
+    valSet1 = false;
+    storeNum1 = 0;
+  }
+
+  if (disconnectCount1 > 50) {
+    disconnectCount1 = 60;
+    disconnected1 = true;
+    valArray1 = false;
+    valSet1 = false;
+    simpleValType1 = 0;
+    speedVal1 = 55;
+    storeNum1 = 0;
+    cycleCountDelay = 0;
+    playNum = 0;
+    for (uint8_t i = 0; i < 99; i++) {
+      storage1[i] = 255;
+    }
+  }
+
+  if (disconnected1 == true || valSet1 == true) {
+    cycleClock = 0;
+  }
+
+  for (uint8_t i = 98; i > 0; i--) {
+    if (storage1[i] == 255) {
+      store1Count = i;
+    }
+  }
+
+  if (playNum == store1Count) {
+    playNum = 0;
+  }
+
+  if (storage1[0] == 255) {
+    buzzerCommand = frequencies[0];
   } else {
     if (store1Count == 1) {
-      if (storage1[1] == 250) {
-        noToneCommand = true;
-        buzzerCommand = -1;
-      } else {
-        noToneCommand = false;
-
-        octave = ((float) storage1[0] / 10) / 2;
-        if ((float) octave - (int) octave >= 0.5) {
-          octave = (int) octave + 1;
+      if (storage1[0] != 255) {
+        if (storage1[0] == 0) {
+          noToneCommand = true;
+          buzzerCommand = 0;
+        } else {
+          noToneCommand = false;
+          buzzerRemainder = (((float) storage1[0] / 100) * 20) - (int) (((float) storage1[0] / 100) * 20);
+          buzzerCommand = frequencies[(int) (((float) storage1[0] / 100) * 20)];
+          if (buzzerRemainder >= 0.7) {
+            buzzerCommand = frequencies[(int) (((float) storage1[0] / 100) * 20) + 1];
+          }
         }
-        octave = (int) octave;
-
-        frequency = (((float) storage1[1]) / 100) * 20;
-        if ((float) frequency - (int) frequency >= 0.5) {
-          frequency = (int) frequency + 1;
-        }
-        frequency = (int) frequency;
-
-        buzzerCommand = frequencies[(int) frequency + (((int) octave - 1) * 12)];
       }
     } else {
-      if (cycleCountDelay < storage1[playNum] * 4) { //Repeat this for as many times as the length says
-        if (playNum == store1Count && extraBlank == true) { //If this is on the last stored value that is an odd number and there is no next number for the brightness, set the brightness to 0
-          noToneCommand = true;
-          buzzerCommand = -1;
-        } else {
-          if (storage1[playNum + 1] == 250) {
+      if (cycleCountDelay < speedVal1) {
+        if (storage1[playNum] != 255) {
+          if (storage1[playNum] == 0) {
             noToneCommand = true;
-            buzzerCommand = -1;
+            buzzerCommand = 0;
           } else {
             noToneCommand = false;
-
-            octave = ((float) storage1[0] / 10) / 2;
-            if ((float) octave - (int) octave >= 0.5) {
-              octave = (int) octave + 1;
+            buzzerRemainder = (((float) storage1[playNum] / 100) * 20) - (int) (((float) storage1[playNum] / 100) * 20);
+            buzzerCommand = frequencies[(int) (((float) storage1[playNum] / 100) * 20)];
+            if (buzzerRemainder >= 0.7) {
+              buzzerCommand = frequencies[(int) (((float) storage1[playNum] / 100) * 20) + 1];
             }
-            octave = (int) octave;
-
-            frequency = (((float) storage1[playNum + 1]) / 100) * 20;
-            if ((float) frequency - (int) frequency >= 0.5) {
-              frequency = (int) frequency + 1;
-            }
-            frequency = (int) frequency;
-
-            buzzerCommand = frequencies[(int) frequency + (((int) octave - 1) * 12)];
           }
         }
       } else {
         cycleCountDelay = 0;
-        playNum += 2; //Move up 2 on the storage
+        playNum++;
       }
     }
   }
 
-  //Only call the analogWrite if there is a significantly different value to send
-  if (lastCommand > buzzerCommand + 1 || lastCommand < buzzerCommand - 1 || noToneCommand == true) {
+  //Only call the tone if there is a significantly different value to send
+  if (lastCommand > buzzerCommand + 1 || lastCommand < buzzerCommand - 1) {
     newVal = true;
   } else {
     newVal = false;
   }
 
   if (newVal == true) {
-    if (noToneCommand == true || buzzerCommand == -1) {
+    if (noToneCommand == true) {
       noTone(buzzerPin);
     } else {
       tone(buzzerPin, buzzerCommand);
@@ -250,5 +334,5 @@ void loop() {
     lastCommand = buzzerCommand;
   }
 
-  delay(10);
+  delay(11);
 }
