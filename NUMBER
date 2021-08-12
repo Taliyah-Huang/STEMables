@@ -46,8 +46,8 @@ void loop() {
     TX_Val = 110;
   }
 
-  analogWrite(TX_PIN1, TX_Val);
-  delay(200);
   analogWrite(TX_PIN1, 120);
-  delay(200);
+  delay(250);
+  analogWrite(TX_PIN1, TX_Val);
+  delay(250);
 }
