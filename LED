@@ -2,10 +2,10 @@
 #define ledPin 1
 
 uint8_t playNum = 0;
-int ledCommand = 262;
+int ledCommand = 255;
 uint8_t cycleCountDelay = 0;
-uint8_t cycleClock = 0;
-int lastCommand = 262;
+uint8_t cycleClock1 = 0;
+int lastCommand = 255;
 bool newVal = true;
 uint8_t disconnectCount1 = 0;
 uint8_t arrayDisconnect1 = 0;
@@ -47,7 +47,7 @@ void setup() {
 
 void loop() {
   cycleCountDelay++;
-  cycleClock++;
+  cycleClock1++;
   currentRead1 = analogRead(RX_PIN1);
 
   //Running average of analogRead values
@@ -149,7 +149,7 @@ void loop() {
     }
   }
 
-  if ((peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock > 20)) {
+  if ((peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20)) {
     peakVal1 = (trueVals1[0] + trueVals1[1] + trueVals1[2] + trueVals1[3] + trueVals1[4]) / 5;
     //Serial.println(peakVal1);
     if (peakVal1 <= 100 + 5 && peakVal1 >= 100 - 5) {
@@ -232,7 +232,7 @@ void loop() {
         }
       }
     }
-    cycleClock = 0;
+    cycleClock1 = 0;
   }
 
   if (simpleValType1 > 250) {
@@ -258,7 +258,7 @@ void loop() {
   }
 
   if (disconnected1 == true || valSet1 == true) {
-    cycleClock = 0;
+    cycleClock1 = 0;
   }
 
   for (uint8_t i = 98; i > 0; i--) {
