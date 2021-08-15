@@ -13,7 +13,7 @@ void loop() {
   sensorVal = analogRead(sensorPin);
 
   if (sensorVal >= 0 && sensorVal <= 5) {
-    TX_Val = 250;
+    TX_Val = -5;
   }
   if (sensorVal >= 10 && sensorVal <= 20) {
     TX_Val = 10;
@@ -43,11 +43,9 @@ void loop() {
     TX_Val = 90;
   }
   if (sensorVal >= 1020 && sensorVal <= 1030) {
-    TX_Val = 110;
+    TX_Val = 105;
   }
 
-  analogWrite(TX_PIN1, 120);
-  delay(250);
-  analogWrite(TX_PIN1, TX_Val);
-  delay(250);
+  analogWrite(TX_PIN1, TX_Val + 130);
+  delay(100);
 }
