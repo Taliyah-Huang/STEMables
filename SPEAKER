@@ -52,6 +52,8 @@ void setup() {
   pinMode(RX_PIN1, INPUT);
   pinMode(buzzerPin, OUTPUT);
   tone(buzzerPin, frequencies[0]);
+  delay(200);
+  noTone(buzzerPin);
 
   for (uint8_t i = 0; i < 99; i++) {
     storage1[i] = 255;
