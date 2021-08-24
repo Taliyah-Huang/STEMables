@@ -1,8 +1,9 @@
-const int TX_PIN1 = 0;
-const int sensorPin = A2;
+#define TX_PIN1 0
+#define sensorPin A2
 
 int sensorVal = 0;
-int TX_Val = 0;
+uint8_t TX_Val = 0;
+uint8_t count = 0;
 
 void setup() {
   pinMode(sensorPin, INPUT);
@@ -10,10 +11,11 @@ void setup() {
 }
 
 void loop() {
+  count++;
   sensorVal = analogRead(sensorPin);
 
   if (sensorVal >= 0 && sensorVal <= 5) {
-    TX_Val = -5;
+    TX_Val = -3;
   }
   if (sensorVal >= 10 && sensorVal <= 20) {
     TX_Val = 10;
@@ -43,9 +45,15 @@ void loop() {
     TX_Val = 90;
   }
   if (sensorVal >= 1020 && sensorVal <= 1030) {
-    TX_Val = 105;
+    TX_Val = 103;
   }
 
-  analogWrite(TX_PIN1, TX_Val + 130);
-  delay(100);
+  if (count < 5) {
+    analogWrite(TX_PIN1, TX_Val + 15);
+    delay(100);
+  } else {
+    analogWrite(TX_PIN1, 125);
+    delay(250);
+    count = 0;
+  }
 }
