@@ -1,5 +1,5 @@
 #define RX_PIN1 A1
-#define buzzerPin 4
+#define buzzerPin 3
 
 const int frequencies[21] =
   //{131, 139, 147, 156, 165, 175, 185, 196, 208, 220, 233, 247, 262, 277, 294, 311, 330, 349, 370, 392, 415}; //Range 1: C3 - G#4
@@ -12,25 +12,23 @@ const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1
 const int finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
 
 bool noToneCommand = false;
-uint8_t playNum = 0;
 float buzzerRemainder = 0.0;
-int buzzerCommand = frequencies[0];
+uint8_t playNum = 0;
+int buzzerCommand = true;
 uint8_t cycleCountDelay = 0;
 uint8_t cycleClock1 = 0;
-int lastCommand = frequencies[0];
+int lastCommand = false;
+uint8_t compare1 = 0;
 bool newVal = true;
-uint8_t disconnectCount1 = 0;
-uint8_t arrayDisconnect1 = 0;
-uint8_t setDisconnect1 = 0;
 bool disconnected1 = false;
+
 uint8_t speeds[4] = {100, 50, 25, 12};
 uint8_t speedVal1 = 55;
-
 uint8_t totalVals1[3] = {0, 0, 99};
 bool collectTotalVals1 = false;
 bool collectSpeed1 = false;
 uint8_t sameVals1 = 0;
-bool valArray1 = false;
+bool valArray1 = true;
 bool valSet1 = false;
 
 int currentRead1 = 0;
@@ -46,11 +44,10 @@ uint8_t storeNum1 = 0;
 uint8_t storeTotalVals1 = 0;
 int peakDetection1 = 0;
 
-uint8_t starter = 0;
-
 void setup() {
   pinMode(RX_PIN1, INPUT);
   pinMode(buzzerPin, OUTPUT);
+  Serial.begin(115200);
   tone(buzzerPin, frequencies[0]);
   delay(200);
   noTone(buzzerPin);
@@ -97,10 +94,6 @@ void loop() {
   }
   trueVals1[0] = trueVal1;
 
-  if (trueVal1 > 10 && trueVal1 < 115) {
-    disconnectCount1++;
-  }
-
   sameVals1 = 0;
   for (uint8_t i = 4; i > 0; i--) {
     if (trueVals1[i] - trueVals1[0] >= -3 && trueVals1[i] - trueVals1[0] <= 3) {
@@ -114,19 +107,18 @@ void loop() {
     peakDetection1 = 0;
   }
 
-  //This is a set Value
-  if (trueVal1 <= 5) {
-    disconnectCount1 = 0;
-    disconnected1 = false;
-    valArray1 = true;
-    valSet1 = false;
+  if (trueVal1 < 5) {
+    disconnected1 = true;
   }
 
-  if ((peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20)) {
+  if (trueVal1 > 70) {
+    disconnected1 = false;
+  }
+
+  if ((disconnected1 == false) && (peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20)) {
     peakVal1 = (trueVals1[0] + trueVals1[1] + trueVals1[2] + trueVals1[3] + trueVals1[4]) / 5;
+
     if (peakVal1 <= 125 + 3 && peakVal1 >= 125 - 3) {
-      disconnectCount1 = 0;
-      disconnected1 = false;
       valSet1 = true;
       valArray1 = false;
       for (uint8_t i = 1; i < 99; i++) {
@@ -136,8 +128,6 @@ void loop() {
 
     if (peakVal1 <= 135 + 3 && peakVal1 >= 135 - 3) {
       collectTotalVals1 = true;
-      disconnectCount1 = 0;
-      disconnected1 = false;
       valArray1 = true;
       valSet1 = false;
     }
@@ -212,15 +202,13 @@ void loop() {
     cycleClock1 = 0;
   }
 
-  if (disconnectCount1 > 120) {
-    disconnectCount1 = 121;
-    disconnected1 = true;
-    valArray1 = false;
+  if (disconnected1 == true) {
+    valArray1 = true;
     valSet1 = false;
     speedVal1 = 55;
     storeNum1 = 0;
-    cycleCountDelay = 0;
     playNum = 0;
+    cycleCountDelay = 0;
     for (uint8_t i = 0; i < 99; i++) {
       storage1[i] = 255;
     }
@@ -277,7 +265,7 @@ void loop() {
     }
   }
 
-  //Only call the tone if there is a significantly different value to send
+  //Only call the analogWrite if there is a significantly different value to send
   if (lastCommand > buzzerCommand + 1 || lastCommand < buzzerCommand - 1) {
     newVal = true;
   } else {
