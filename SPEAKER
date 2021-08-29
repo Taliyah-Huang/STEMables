@@ -1,5 +1,5 @@
 #define RX_PIN1 A1
-#define buzzerPin 3
+#define buzzerPin 4
 
 const int frequencies[21] =
   //{131, 139, 147, 156, 165, 175, 185, 196, 208, 220, 233, 247, 262, 277, 294, 311, 330, 349, 370, 392, 415}; //Range 1: C3 - G#4
@@ -47,7 +47,6 @@ int peakDetection1 = 0;
 void setup() {
   pinMode(RX_PIN1, INPUT);
   pinMode(buzzerPin, OUTPUT);
-  Serial.begin(115200);
   tone(buzzerPin, frequencies[0]);
   delay(200);
   noTone(buzzerPin);
@@ -230,17 +229,15 @@ void loop() {
 
   if (storage1[0] != 255) {
     if (store1Count == 1) {
-      if (storage1[0] != 255) {
-        if (storage1[0] == 0) {
-          noToneCommand = true;
-          buzzerCommand = 0;
-        } else {
-          noToneCommand = false;
-          buzzerRemainder = (((float) storage1[0] / 100) * 20) - (int) (((float) storage1[0] / 100) * 20);
-          buzzerCommand = frequencies[(int) (((float) storage1[0] / 100) * 20)];
-          if (buzzerRemainder >= 0.7) {
-            buzzerCommand = frequencies[(int) (((float) storage1[0] / 100) * 20) + 1];
-          }
+      if (storage1[0] == 0) {
+        noToneCommand = true;
+        buzzerCommand = 0;
+      } else {
+        noToneCommand = false;
+        buzzerRemainder = (((float) storage1[0] / 100) * 20) - (int) (((float) storage1[0] / 100) * 20);
+        buzzerCommand = frequencies[(int) (((float) storage1[0] / 100) * 20)];
+        if (buzzerRemainder >= 0.7) {
+          buzzerCommand = frequencies[(int) (((float) storage1[0] / 100) * 20) + 1];
         }
       }
     } else {
