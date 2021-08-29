@@ -6,23 +6,21 @@ const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1
 const int finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
 
 uint8_t playNum = 0;
-int ledCommand = 255;
+int ledCommand = true;
 uint8_t cycleCountDelay = 0;
 uint8_t cycleClock1 = 0;
-int lastCommand = 255;
+int lastCommand = false;
+uint8_t compare1 = 0;
 bool newVal = true;
-uint8_t disconnectCount1 = 0;
-uint8_t arrayDisconnect1 = 0;
-uint8_t setDisconnect1 = 0;
 bool disconnected1 = false;
+
 uint8_t speeds[4] = {100, 50, 25, 12};
 uint8_t speedVal1 = 55;
-
 uint8_t totalVals1[3] = {0, 0, 99};
 bool collectTotalVals1 = false;
 bool collectSpeed1 = false;
 uint8_t sameVals1 = 0;
-bool valArray1 = false;
+bool valArray1 = true;
 bool valSet1 = false;
 
 int currentRead1 = 0;
@@ -42,6 +40,8 @@ void setup() {
   pinMode(RX_PIN1, INPUT);
   pinMode(ledPin, OUTPUT);
   analogWrite(ledPin, 255);
+  delay(200);
+  analogWrite(ledPin, 0);
 
   for (uint8_t i = 0; i < 99; i++) {
     storage1[i] = 255;
@@ -85,10 +85,6 @@ void loop() {
   }
   trueVals1[0] = trueVal1;
 
-  if (trueVal1 > 10 && trueVal1 < 115) {
-    disconnectCount1++;
-  }
-
   sameVals1 = 0;
   for (uint8_t i = 4; i > 0; i--) {
     if (trueVals1[i] - trueVals1[0] >= -3 && trueVals1[i] - trueVals1[0] <= 3) {
@@ -102,19 +98,18 @@ void loop() {
     peakDetection1 = 0;
   }
 
-  //This is a set Value
-  if (trueVal1 <= 5) {
-    disconnectCount1 = 0;
-    disconnected1 = false;
-    valArray1 = true;
-    valSet1 = false;
+  if (trueVal1 < 5) {
+    disconnected1 = true;
   }
 
-  if ((peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20)) {
+  if (trueVal1 > 70) {
+    disconnected1 = false;
+  }
+
+  if ((disconnected1 == false) && (peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20)) {
     peakVal1 = (trueVals1[0] + trueVals1[1] + trueVals1[2] + trueVals1[3] + trueVals1[4]) / 5;
+
     if (peakVal1 <= 125 + 3 && peakVal1 >= 125 - 3) {
-      disconnectCount1 = 0;
-      disconnected1 = false;
       valSet1 = true;
       valArray1 = false;
       for (uint8_t i = 1; i < 99; i++) {
@@ -124,8 +119,6 @@ void loop() {
 
     if (peakVal1 <= 135 + 3 && peakVal1 >= 135 - 3) {
       collectTotalVals1 = true;
-      disconnectCount1 = 0;
-      disconnected1 = false;
       valArray1 = true;
       valSet1 = false;
     }
@@ -200,15 +193,13 @@ void loop() {
     cycleClock1 = 0;
   }
 
-  if (disconnectCount1 > 120) {
-    disconnectCount1 = 121;
-    disconnected1 = true;
-    valArray1 = false;
+  if (disconnected1 == true) {
+    valArray1 = true;
     valSet1 = false;
     speedVal1 = 55;
     storeNum1 = 0;
-    cycleCountDelay = 0;
     playNum = 0;
+    cycleCountDelay = 0;
     for (uint8_t i = 0; i < 99; i++) {
       storage1[i] = 255;
     }
@@ -230,12 +221,10 @@ void loop() {
 
   if (storage1[0] != 255) {
     if (store1Count == 1) {
-      if (storage1[0] != 255) {
-        if (storage1[0] == 0) {
-          ledCommand = 0;
-        } else {
-          ledCommand = (int) map(storage1[0], 0, 100, 0, 255);
-        }
+      if (storage1[0] == 0) {
+        ledCommand = 0;
+      } else {
+        ledCommand = (int) (((float) storage1[0] / 100) * 255);
       }
     } else {
       if (cycleCountDelay < speedVal1) {
@@ -243,16 +232,15 @@ void loop() {
           if (storage1[playNum] == 0) {
             ledCommand = 0;
           } else {
-            ledCommand = (int) map(storage1[playNum], 0, 100, 0, 255);
+            ledCommand = (int) (((float) storage1[playNum] / 100) * 255);
           }
-        } else {
-          cycleCountDelay = 0;
-          playNum++;
         }
+      } else {
+        cycleCountDelay = 0;
+        playNum++;
       }
     }
   }
-
 
   //Only call the analogWrite if there is a significantly different value to send
   if (lastCommand > ledCommand + 1 || lastCommand < ledCommand - 1) {
