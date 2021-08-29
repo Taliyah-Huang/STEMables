@@ -411,7 +411,7 @@ void loop() {
         TX_Type = true;
       }
     } else {
-      if (cycleCountDelay < 25) {
+      if (cycleCountDelay < 100) {
         //if (compare1 == compare2) { //EQUAL TO
         //if (compare1 != compare2) { //UNEQUAL TO
         //if (compare1 > compare2) { //GREATER THAN
