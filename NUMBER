@@ -2,7 +2,7 @@
 #define sensorPin A2
 
 int sensorVal = 0;
-uint8_t TX_Val = 0;
+int TX_Val = 0;
 uint8_t count = 0;
 
 void setup() {
