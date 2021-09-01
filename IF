@@ -1,3 +1,4 @@
+//IF
 #define RX_PIN1 A1
 #define RX_PIN2 A2
 #define TX_PIN1 0
@@ -16,8 +17,10 @@ uint8_t compare1 = 0;
 uint8_t compare2 = 0;
 bool newVal = true;
 bool disconnected1 = false;
+uint8_t disconnectCount1 = 0;
 
 bool disconnected2 = false;
+uint8_t disconnectCount2 = 0;
 
 uint8_t speeds[4] = {100, 50, 25, 12};
 uint8_t speedVal1 = 55;
@@ -157,20 +160,17 @@ void loop() {
     peakDetection2 = 0;
   }
 
-  if (trueVal1 < 5) {
-    disconnected1 = true;
-  }
-
-  if (trueVal2 < 5) {
-    disconnected2 = true;
-  }
+  disconnectCount1++;
+  disconnectCount2++;
 
   if (trueVal1 > 70) {
     disconnected1 = false;
+    disconnectCount1 = 0;
   }
 
   if (trueVal2 > 70) {
     disconnected2 = false;
+    disconnectCount2 = 0;
   }
 
   if ((disconnected1 == false) && (peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20)) {
@@ -346,23 +346,25 @@ void loop() {
     cycleClock2 = 0;
   }
 
-  if (disconnected1 == true) {
+  if (disconnected1 == true || disconnectCount1 > 150) {
+    disconnectCount1 = 151;
+    disconnected1 = true;
     valArray1 = true;
     valSet1 = false;
     speedVal1 = 55;
     storeNum1 = 0;
-    cycleCountDelay = 0;
     for (uint8_t i = 0; i < 99; i++) {
       storage1[i] = 255;
     }
   }
 
-  if (disconnected2 > true) {
+  if (disconnected2 == true || disconnectCount2 > 150) {
+    disconnectCount2 = 151;
+    disconnected2 = true;
     valArray2 = true;
     valSet2 = false;
     speedVal2 = 55;
     storeNum2 = 0;
-    cycleCountDelay = 0;
     for (uint8_t i = 0; i < 99; i++) {
       storage2[i] = 255;
     }
@@ -402,32 +404,34 @@ void loop() {
     if (valSet2 == false && valArray2 == true) {
       compare2 = totalVals2[2];
     }
+  }
 
-    if (TX_Type == false) {
-      if (cycleCountDelay < 25) {
-        command = 125;
+  if (TX_Type == false) {
+    if (cycleCountDelay < 25) {
+      command = 125;
+    } else {
+      cycleCountDelay = 0;
+      TX_Type = true;
+    }
+  } else {
+    if (cycleCountDelay < 100) {
+      //if (compare1 >= compare2 - 1 && compare1 <= compare2 + 1) { //EQUAL TO ==
+      //if (compare1 <= compare2 - 1 || compare1 >= compare2 + 1) { //UNEQUAL TO !=
+      //if (compare1 > compare2 - 1) { //GREATER THAN >
+      if (compare1 >= compare2 - 1) { //GREATER THAN OR EQUAL TO >=
+        command = 100 + 3 + 15;
       } else {
-        cycleCountDelay = 0;
-        TX_Type = true;
+        command = 0 - 3 + 15;
+      }
+      if (storage1[0] == 255 || storage2[0] == 255 || disconnected1 == true || disconnected2 == true) {
+        command = 0 - 3 + 15;
       }
     } else {
-      if (cycleCountDelay < 100) {
-        //if (compare1 == compare2) { //EQUAL TO
-        //if (compare1 != compare2) { //UNEQUAL TO
-        //if (compare1 > compare2) { //GREATER THAN
-        //if (compare1 < compare2) { //LESS THAN
-        if (compare1 >= compare2) { //GREATER THAN OR EQUAL TO
-          //if (compare1 <= compare2) { //LESS THAN OR EQUAL TO
-          command = 100 + 3 + 15;
-        } else {
-          command = 0 - 3 + 15;
-        }
-      } else {
-        cycleCountDelay = 0;
-        TX_Type = false;
-      }
+      cycleCountDelay = 0;
+      TX_Type = false;
     }
   }
+
 
   //Only call the analogWrite if there is a significantly different value to send
   if (lastCommand > command + 1 || lastCommand < command - 1) {
@@ -441,9 +445,5 @@ void loop() {
     lastCommand = command;
   }
 
-  if (storage1[0] == 255 || storage2[0] == 255 || disconnected1 == true || disconnected2 == true) {
-    analogWrite(TX_PIN1, 0 - 3 + 15);
-  }
-  
   delay(10);
 }
