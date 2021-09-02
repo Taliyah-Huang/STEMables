@@ -1,0 +1,55 @@
+//PROXIMITY SENSOR
+#define TX_PIN1 0
+#define trigPin 2
+#define echoPin 3
+
+int time;
+int distance = 50;
+uint8_t cycleCountDelay = 0;
+
+void setup() {
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(TX_PIN1, OUTPUT);
+
+}
+
+void loop() {
+  digitalWrite (trigPin, HIGH);
+  delayMicroseconds (10);
+  digitalWrite (trigPin, LOW);
+  time = pulseIn (echoPin, HIGH);
+
+  if (((time * 0.034) / 2) >= 0) {
+    distance = (time * 0.034) / 2;
+  }
+  if (distance >= 100) {
+    distance = 100;
+  }
+
+  if (TX_Type == false) {
+    if (cycleCountDelay < 25) {
+      analogWrite(TX_PIN1, 125);
+    } else {
+      cycleCountDelay = 0;
+      TX_Type = true;
+    }
+  } else {
+    if (cycleCountDelay < 100) {
+      if (distance == 0) {
+        analogWrite(TX_PIN1, -3 + 15);
+      }
+      if (distance == 100) {
+        analogWrite(TX_PIN1, 103 + 15);
+      }
+      if (distance > 0 && distance < 100) {
+        analogWrite(TX_PIN1, distance + 15);
+      }
+    } else {
+      cycleCountDelay = 0;
+      TX_Type = true;
+    }
+  }
+
+  delay(10);
+}
