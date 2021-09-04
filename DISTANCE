@@ -1,4 +1,4 @@
-//PROXIMITY SENSOR
+//DISTANCE SENSOR
 #define TX_PIN1 0
 #define trigPin 2
 #define echoPin 3
