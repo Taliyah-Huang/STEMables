@@ -1,10 +1,11 @@
 //DISTANCE SENSOR
 #define TX_PIN1 0
-#define trigPin 2
-#define echoPin 3
+#define trigPin 1
+#define echoPin 2
 
 int time;
 int distance = 50;
+bool TX_Type = false;
 uint8_t cycleCountDelay = 0;
 
 void setup() {
@@ -15,6 +16,7 @@ void setup() {
 }
 
 void loop() {
+  cycleCountDelay++;
   digitalWrite (trigPin, HIGH);
   delayMicroseconds (10);
   digitalWrite (trigPin, LOW);
@@ -47,7 +49,7 @@ void loop() {
       }
     } else {
       cycleCountDelay = 0;
-      TX_Type = true;
+      TX_Type = false;
     }
   }
 
