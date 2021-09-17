@@ -3,18 +3,14 @@
 #define RX_PIN2 A2
 #define TX_PIN1 0
 
-const int inputVal[12] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50};
-const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02};
-const int finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
-
-bool TX_Type = false;
-int command = true;
+uint8_t TX_Type = 0;
+uint8_t TX_Count = 0;
+uint8_t command = -3 + 15;
+uint8_t playNum = 0;
 uint8_t cycleCountDelay = 0;
 uint8_t cycleClock1 = 0;
 uint8_t cycleClock2 = 0;
-int lastCommand = false;
-uint8_t compare1 = 0;
-uint8_t compare2 = 0;
+uint8_t lastCommand = 103 + 15;
 bool newVal = true;
 bool disconnected1 = false;
 uint8_t disconnectCount1 = 0;
@@ -22,9 +18,17 @@ uint8_t disconnectCount1 = 0;
 bool disconnected2 = false;
 uint8_t disconnectCount2 = 0;
 
-uint8_t speeds[4] = {100, 50, 25, 12};
+uint8_t compare1 = 0;
+uint8_t compare2 = 0;
+
+const uint8_t speeds[4] = {100, 50, 25, 12};
 uint8_t speedVal1 = 55;
+uint8_t markStart1 = 0;
+bool collectStart1 = false;
+
 uint8_t speedVal2 = 55;
+uint8_t markStart2 = 0;
+bool collectStart2 = false;
 
 uint8_t totalVals1[3] = {0, 0, 99};
 bool collectTotalVals1 = false;
@@ -40,31 +44,24 @@ uint8_t sameVals2 = 0;
 bool valArray2 = true;
 bool valSet2 = false;
 
-int currentRead1 = 0;
 uint8_t storage1 [99] = {};
 uint8_t store1Count = 100;
-int averages1[5] = {0, 0, 0, 0, 0};
-int totalAve1 = 0;
-float trueVal1 = 0.0;
+uint16_t averages1[5] = {0, 0, 0, 0, 0};
 uint8_t trueVals1[5] = {0, 0, 0, 0, 0};
-int peakVal1 = 0;
-float remainder1 = 0.0;
 uint8_t storeNum1 = 0;
 uint8_t storeTotalVals1 = 0;
-int peakDetection1 = 0;
+uint8_t peakDetection1 = 0;
 
-int currentRead2 = 0;
 uint8_t storage2 [99] = {};
 uint8_t store2Count = 100;
-int averages2[5] = {0, 0, 0, 0, 0};
-int totalAve2 = 0;
-float trueVal2 = 0.0;
+uint16_t averages2[5] = {0, 0, 0, 0, 0};
 uint8_t trueVals2[5] = {0, 0, 0, 0, 0};
-int peakVal2 = 0;
-float remainder2 = 0.0;
 uint8_t storeNum2 = 0;
 uint8_t storeTotalVals2 = 0;
-int peakDetection2 = 0;
+uint8_t peakDetection2 = 0;
+
+uint8_t completeStorage [99] = {};
+uint8_t completeStoreCount = 0;
 
 void setup() {
   pinMode(RX_PIN1, INPUT);
@@ -74,6 +71,7 @@ void setup() {
   for (uint8_t i = 0; i < 99; i++) {
     storage1[i] = 255;
     storage2[i] = 255;
+    completeStorage[i] = 255;
   }
 }
 
@@ -81,6 +79,8 @@ void loop() {
   cycleCountDelay++;
   cycleClock1++;
   cycleClock2++;
+  uint16_t currentRead1 = 0;
+  uint16_t currentRead2 = 0;
   currentRead1 = analogRead(RX_PIN1);
   currentRead2 = analogRead(RX_PIN2);
 
@@ -92,10 +92,19 @@ void loop() {
   averages1[0] = currentRead1;
   averages2[0] = currentRead2;
 
+  uint16_t totalAve1 = 0;
+  uint16_t totalAve2 = 0;
+
   totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
   totalAve2 = (averages2[4] + averages2[3] + averages2[2] + averages2[1] + averages2[0]) / 5;
 
-  for (int i = 0; i < 11; i++) {
+  float trueVal1 = 0.0;
+  float trueVal2 = 0.0;
+
+  for (uint8_t i = 0; i < 11; i++) {
+    const uint8_t inputVal[12] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50};
+    const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02};
+    const uint8_t finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
     if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
       trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
     }
@@ -104,12 +113,15 @@ void loop() {
     }
   }
 
-  if (totalAve1 >= finalVal[11]) {
-    trueVal1 = totalAve1 / scaleVal[11];
+  if (totalAve1 >= 201) {
+    trueVal1 = totalAve1 / 4.02;
   }
-  if (totalAve2 >= finalVal[11]) {
-    trueVal2 = totalAve2 / scaleVal[11];
+  if (totalAve2 >= 201) {
+    trueVal2 = totalAve2 / 4.02;
   }
+
+  float remainder1 = 0.0;
+  float remainder2 = 0.0;
 
   //Round the value by 0.5
   remainder1 = (float) trueVal1 - (int) trueVal1;
@@ -163,19 +175,21 @@ void loop() {
   disconnectCount1++;
   disconnectCount2++;
 
-  if (trueVal1 > 70) {
+  if (trueVal1 >= 120) {
     disconnected1 = false;
     disconnectCount1 = 0;
+    store1Count = 99;
   }
 
-  if (trueVal2 > 70) {
+  if (trueVal2 >= 120) {
     disconnected2 = false;
     disconnectCount2 = 0;
+    store2Count = 99;
   }
 
-  if ((disconnected1 == false) && (peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20)) {
+  if ((trueVal1 < 150) && ((disconnected1 == false) && (peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20))) {
+    int16_t peakVal1 = 0;
     peakVal1 = (trueVals1[0] + trueVals1[1] + trueVals1[2] + trueVals1[3] + trueVals1[4]) / 5;
-
     if (peakVal1 <= 125 + 3 && peakVal1 >= 125 - 3) {
       valSet1 = true;
       valArray1 = false;
@@ -238,13 +252,16 @@ void loop() {
                   speedVal1 = speeds[i];
                   valArray1 = true;
                   collectSpeed1 = false;
+                  collectStart1 = true;
                 }
               }
             }
           } else {
             if (peakVal1 >= 0 && peakVal1 <= 100) {
               storage1[storeNum1 - 1] = peakVal1;
-              if (storage1[0] != 0) {
+              if (collectStart1 == true) {
+                markStart1 = storeNum1 - 1;
+                collectStart1 = false;
               }
             }
           }
@@ -260,7 +277,8 @@ void loop() {
     cycleClock1 = 0;
   }
 
-  if ((disconnected2 == false) && (peakDetection2 == 5) || (peakDetection2 > 5 && cycleClock2 > 20)) {
+  if ((trueVal2 < 150) && ((disconnected2 == false) && (peakDetection2 == 5) || (peakDetection2 > 5 && cycleClock2 > 20))) {
+    int16_t peakVal2 = 0;
     peakVal2 = (trueVals2[0] + trueVals2[1] + trueVals2[2] + trueVals2[3] + trueVals2[4]) / 5;
     if (peakVal2 <= 125 + 3 && peakVal2 >= 125 - 3) {
       valSet2 = true;
@@ -324,13 +342,16 @@ void loop() {
                   speedVal2 = speeds[i];
                   valArray2 = true;
                   collectSpeed2 = false;
+                  collectStart2 = true;
                 }
               }
             }
           } else {
             if (peakVal2 >= 0 && peakVal2 <= 100) {
               storage2[storeNum2 - 1] = peakVal2;
-              if (storage2[0] != 0) {
+              if (collectStart2 == true) {
+                markStart2 = storeNum2 - 1;
+                collectStart2 = false;
               }
             }
           }
@@ -353,6 +374,7 @@ void loop() {
     valSet1 = false;
     speedVal1 = 55;
     storeNum1 = 0;
+    store1Count = 0;
     for (uint8_t i = 0; i < 99; i++) {
       storage1[i] = 255;
     }
@@ -365,6 +387,7 @@ void loop() {
     valSet2 = false;
     speedVal2 = 55;
     storeNum2 = 0;
+    store2Count = 0;
     for (uint8_t i = 0; i < 99; i++) {
       storage2[i] = 255;
     }
@@ -388,6 +411,14 @@ void loop() {
     if (storage2[i] == 255) {
       store2Count = i;
     }
+  }
+
+  if (storage1[0] == 255) {
+    store1Count = 0;
+  }
+
+  if (storage2[0] == 255) {
+    store2Count = 0;
   }
 
   if (storage1[0] != 255 && storage2[0] != 255) {
@@ -415,10 +446,10 @@ void loop() {
     }
   } else {
     if (cycleCountDelay < 100) {
-      //if (compare1 >= compare2 - 1 && compare1 <= compare2 + 1) { //EQUAL TO ==
+      if (compare1 >= compare2 - 1 && compare1 <= compare2 + 1) { //EQUAL TO ==
       //if (compare1 <= compare2 - 1 || compare1 >= compare2 + 1) { //UNEQUAL TO !=
-      //if (compare1 > compare2 - 1) { //GREATER THAN >
-      if (compare1 >= compare2 - 1) { //GREATER THAN OR EQUAL TO >=
+      //if (compare1 > compare2 + 1) { //GREATER THAN >
+      //if (compare1 >= compare2 - 1) { //GREATER THAN OR EQUAL TO >=
         command = 100 + 3 + 15;
       } else {
         command = 0 - 3 + 15;
@@ -442,6 +473,7 @@ void loop() {
 
   if (newVal == true) {
     analogWrite(TX_PIN1, command);
+    Serial.println(command);
     lastCommand = command;
   }
 
