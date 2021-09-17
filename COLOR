@@ -1,0 +1,80 @@
+#define TX_PIN1 1
+
+#include <Wire.h>
+#include "Adafruit_TCS34725.h"
+
+byte gammatable[256];
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);
+
+int TX_Val = -3;
+uint8_t count = 0;
+
+void setup() {
+  tcs.begin();
+
+  for (int i = 0; i < 256; i++) {
+    float x = i;
+    x /= 255;
+    x = pow(x, 2.5);
+    x *= 255;
+    gammatable[i] = x;
+  }
+}
+
+void loop() {
+  count++;
+
+  float red, green, blue;
+
+  tcs.getRGB(&red, &green, &blue);
+
+  float rf = (float) gammatable[(int) red] / 255;
+  float gf = (float) gammatable[(int) green] / 255;
+  float bf = (float) gammatable[(int) blue] / 255;
+
+  float minRGB = min(rf, min(gf, bf));
+  float maxRGB = max(rf, max(gf, bf));
+
+  float range = maxRGB - minRGB;
+  float total = maxRGB + minRGB;
+  float total2 = 2 - total;
+
+  float maxr = (gf - bf) / range;
+  float maxg = 2 + ((bf - rf) / range);
+  float maxb = 4 + ((rf - gf) / range);
+
+  float hue;
+  if (maxRGB == rf) {
+    hue = maxr;
+  } else {
+    if (maxRGB == gf) {
+      hue = maxg;
+    } else {
+      hue = maxb;
+    }
+  }
+
+  hue *= 60;
+
+  int finalHue = hue;
+  if (finalHue < 0) {
+    finalHue += 360;
+  }
+
+  TX_Val = map(finalHue, 0, 360, 0, 100);
+
+  if (count < 5) {
+    if (TX_Val == 0) {
+      TX_Val = -3;
+    }
+    if (TX_Val == 100) {
+      TX_Val = 103;
+    }
+    analogWrite(TX_PIN1, TX_Val + 15);
+    delay(100);
+  } else {
+    analogWrite(TX_PIN1, 125);
+    delay(250);
+    count = 0;
+  }
+}
