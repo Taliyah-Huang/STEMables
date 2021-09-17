@@ -62,7 +62,7 @@ void loop() {
     finalHue += 360;
   }
 
-  TX_Val = map(finalHue, 0, 360, 0, 100);
+  TX_Val = map(finalHue, 0, 360, 1, 100);
 
   if (count < 5) {
     if (TX_Val == 0) {
