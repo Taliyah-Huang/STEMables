@@ -3,14 +3,10 @@
 #define buzzerPin 4
 
 const int frequencies[21] =
-  //{131, 139, 147, 156, 165, 175, 185, 196, 208, 220, 233, 247, 262, 277, 294, 311, 330, 349, 370, 392, 415}; //Range 1: C3 - G#4
-  //{262, 277, 294, 311, 330, 349, 370, 392, 415, 440, 466, 494, 523, 554, 587, 622, 659, 698, 740, 784, 831}; //Range 2: C4 - G#5
-{523, 554, 587, 622, 659, 698, 740, 784, 831, 880, 932, 988, 1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661}; //Range 3: C5 - G#6
+{131, 139, 147, 156, 165, 175, 185, 196, 208, 220, 233, 247, 262, 277, 294, 311, 330, 349, 370, 392, 415}; //Range 1: C3 - G#4
+//{262, 277, 294, 311, 330, 349, 370, 392, 415, 440, 466, 494, 523, 554, 587, 622, 659, 698, 740, 784, 831}; //Range 2: C4 - G#5
+//{523, 554, 587, 622, 659, 698, 740, 784, 831, 880, 932, 988, 1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661}; //Range 3: C5 - G#6
 //{1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661, 1760, 1865, 1976, 2093, 2217, 23349, 2489, 2637, 2794, 2960, 3136, 3322}; //Range 4: C6 - G#7
-
-const int inputVal[12] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50};
-const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02};
-const int finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
 
 bool noToneCommand = false;
 float buzzerRemainder = 0.0;
@@ -22,9 +18,13 @@ int lastCommand = false;
 uint8_t compare1 = 0;
 bool newVal = true;
 bool disconnected1 = false;
+uint8_t disconnectCount1 = 0;
 
 uint8_t speeds[4] = {100, 50, 25, 12};
 uint8_t speedVal1 = 55;
+uint8_t markStart1 = 0;
+bool collectStart1 = false;
+
 uint8_t totalVals1[3] = {0, 0, 99};
 bool collectTotalVals1 = false;
 bool collectSpeed1 = false;
@@ -40,7 +40,6 @@ int totalAve1 = 0;
 float trueVal1 = 0.0;
 uint8_t trueVals1[5] = {0, 0, 0, 0, 0};
 int peakVal1 = 0;
-float remainder1 = 0.0;
 uint8_t storeNum1 = 0;
 uint8_t storeTotalVals1 = 0;
 int peakDetection1 = 0;
@@ -71,14 +70,19 @@ void loop() {
   totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
 
   for (int i = 0; i < 11; i++) {
+    const int inputVal[12] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50};
+    const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02};
+    const int finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
     if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
       trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
     }
   }
 
-  if (totalAve1 >= finalVal[11]) {
-    trueVal1 = totalAve1 / scaleVal[11];
+  if (totalAve1 >= 201) {
+    trueVal1 = totalAve1 / 4.02;
   }
+
+  float remainder1 = 0.0;
 
   //Round the value by 0.5
   remainder1 = (float) trueVal1 - (int) trueVal1;
@@ -107,17 +111,17 @@ void loop() {
     peakDetection1 = 0;
   }
 
-  if (trueVal1 < 5) {
-    disconnected1 = true;
-  }
+  disconnectCount1++;
 
-  if (trueVal1 > 70) {
+  if (trueVal1 >= 120) {
     disconnected1 = false;
+    disconnectCount1 = 0;
+    store1Count = 99;
   }
 
-  if ((disconnected1 == false) && (peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20)) {
+  if ((trueVal1 < 150) && ((disconnected1 == false) && (peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20))) {
+    int16_t peakVal1 = 0;
     peakVal1 = (trueVals1[0] + trueVals1[1] + trueVals1[2] + trueVals1[3] + trueVals1[4]) / 5;
-
     if (peakVal1 <= 125 + 3 && peakVal1 >= 125 - 3) {
       valSet1 = true;
       valArray1 = false;
@@ -180,13 +184,16 @@ void loop() {
                   speedVal1 = speeds[i];
                   valArray1 = true;
                   collectSpeed1 = false;
+                  collectStart1 = true;
                 }
               }
             }
           } else {
             if (peakVal1 >= 0 && peakVal1 <= 100) {
               storage1[storeNum1 - 1] = peakVal1;
-              if (storage1[0] != 0) {
+              if (collectStart1 == true) {
+                markStart1 = storeNum1 - 1;
+                collectStart1 = false;
               }
             }
           }
@@ -202,13 +209,14 @@ void loop() {
     cycleClock1 = 0;
   }
 
-  if (disconnected1 == true) {
+  if (disconnected1 == true || disconnectCount1 > 150) {
+    disconnectCount1 = 151;
+    disconnected1 = true;
     valArray1 = true;
     valSet1 = false;
     speedVal1 = 55;
     storeNum1 = 0;
-    playNum = 0;
-    cycleCountDelay = 0;
+    store1Count = 0;
     for (uint8_t i = 0; i < 99; i++) {
       storage1[i] = 255;
     }
@@ -222,6 +230,10 @@ void loop() {
     if (storage1[i] == 255) {
       store1Count = i;
     }
+  }
+
+  if (storage1[0] == 255) {
+    store1Count = 0;
   }
 
   if (playNum == store1Count) {
