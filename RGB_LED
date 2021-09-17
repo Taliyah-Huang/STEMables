@@ -1,0 +1,381 @@
+//RGB LED
+#define ledPin 1
+#define RX_PIN1 A1
+
+#include <Adafruit_NeoPixel.h>
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, ledPin, NEO_GRB + NEO_KHZ800);
+
+uint8_t playNum = 0;
+uint8_t cycleCountDelay = 0;
+uint8_t cycleClock1 = 0;
+int ledCommandR = 255;
+int lastCommandR = 0;
+int ledCommandG = 255;
+int lastCommandG = 0;
+int ledCommandB = 255;
+int lastCommandB = 0;
+bool newValR = true;
+bool newValG = true;
+bool newValB = true;
+bool disconnected1 = false;
+uint8_t disconnectCount1 = 0;
+
+const uint8_t speeds[4] = {100, 50, 25, 12};
+uint8_t speedVal1 = 55;
+uint8_t markStart1 = 0;
+bool collectStart1 = false;
+
+uint8_t totalVals1[3] = {0, 0, 99};
+bool collectTotalVals1 = false;
+bool collectSpeed1 = false;
+uint8_t sameVals1 = 0;
+bool valArray1 = true;
+bool valSet1 = false;
+
+uint8_t storage1 [99] = {};
+uint8_t store1Count = 100;
+uint16_t averages1[5] = {0, 0, 0, 0, 0};
+uint8_t trueVals1[5] = {0, 0, 0, 0, 0};
+uint8_t storeNum1 = 0;
+uint8_t storeTotalVals1 = 0;
+uint8_t peakDetection1 = 0;
+
+void setup() {
+  pinMode(RX_PIN1, INPUT);
+  strip.begin();
+  strip.setPixelColor(0, 255, 0, 0);
+  strip.show();
+  delay(200);
+  strip.setPixelColor(0, 0, 0, 0);
+  strip.show();
+
+  for (uint8_t i = 0; i < 99; i++) {
+    storage1[i] = 255;
+  }
+}
+
+void loop() {
+  cycleCountDelay++;
+  cycleClock1++;
+  uint16_t currentRead1 = 0;
+  currentRead1 = analogRead(RX_PIN1);
+
+  //Running average of analogRead values
+  for (uint8_t i = 4; i > 0; i--) {
+    averages1[i] = averages1[i - 1];
+  }
+  averages1[0] = currentRead1;
+
+  uint16_t totalAve1 = 0;
+
+  totalAve1 = (averages1[4] + averages1[3] + averages1[2] + averages1[1] + averages1[0]) / 5;
+
+  float trueVal1 = 0.0;
+
+  for (uint8_t i = 0; i < 11; i++) {
+    const uint8_t inputVal[12] = {1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50};
+    const float scaleVal[12] = {6.0, 5.0, 4.67, 4.5, 4.4, 4.33, 4.25, 4.2, 4.13, 4.1, 4.03, 4.02};
+    const uint8_t finalVal[12] = {6, 10, 14, 18, 22, 26, 34, 42, 62, 82, 121, 201};
+    if (totalAve1 >= finalVal[i] - 2 && totalAve1 <= finalVal[i + 1] - 2) {
+      trueVal1 = totalAve1 / (int) map(totalAve1, finalVal[i], finalVal[i + 1], scaleVal[i], scaleVal[i + 1]);
+    }
+  }
+
+  if (totalAve1 >= 201) {
+    trueVal1 = totalAve1 / 4.02;
+  }
+
+  float remainder1 = 0.0;
+
+  //Round the value by 0.5
+  remainder1 = (float) trueVal1 - (int) trueVal1;
+  trueVal1 = (int) trueVal1;
+
+  if (remainder1 >= 0.5) {
+    trueVal1++;
+  }
+
+  //Store 5 trueVals
+  for (uint8_t i = 4; i > 0; i--) {
+    trueVals1[i] = trueVals1[i - 1];
+  }
+  trueVals1[0] = trueVal1;
+
+  sameVals1 = 0;
+  for (uint8_t i = 4; i > 0; i--) {
+    if (trueVals1[i] - trueVals1[0] >= -3 && trueVals1[i] - trueVals1[0] <= 3) {
+      sameVals1++;
+    }
+  }
+
+  if (sameVals1 == 4) {
+    peakDetection1++;
+  } else {
+    peakDetection1 = 0;
+  }
+
+  disconnectCount1++;
+
+  if (trueVal1 >= 120) {
+    disconnected1 = false;
+    disconnectCount1 = 0;
+    store1Count = 99;
+  }
+
+  if ((trueVal1 < 150) && ((disconnected1 == false) && (peakDetection1 == 5) || (peakDetection1 > 5 && cycleClock1 > 20))) {
+    int16_t peakVal1 = 0;
+    peakVal1 = (trueVals1[0] + trueVals1[1] + trueVals1[2] + trueVals1[3] + trueVals1[4]) / 5;
+    if (peakVal1 <= 125 + 3 && peakVal1 >= 125 - 3) {
+      valSet1 = true;
+      valArray1 = false;
+      for (uint8_t i = 1; i < 99; i++) {
+        storage1[i] = 255;
+      }
+    }
+
+    if (peakVal1 <= 135 + 3 && peakVal1 >= 135 - 3) {
+      collectTotalVals1 = true;
+      valArray1 = true;
+      valSet1 = false;
+    }
+
+    //It is array type but haven't received the signal
+    if (valSet1 == false) {
+      if (peakVal1 >= 10 && peakVal1 <= 120) {
+        if (collectTotalVals1 == false && collectSpeed1 == false) {
+          storeNum1++;
+        }
+      }
+    }
+
+    if (storeNum1 > totalVals1[2]) {
+      storeNum1 = 1;
+    }
+
+    peakVal1 -= 15;
+
+    if (peakVal1 >= 100 && peakVal1 < 105) {
+      peakVal1 = 100;
+    }
+    if (peakVal1 <= 0 && peakVal1 > -5) {
+      peakVal1 = 0;
+    }
+
+    if (disconnected1 == false) {
+      if (valSet1 == false) {
+        if (collectTotalVals1 == true) {
+          for (uint8_t i = 0; i < 10; i++) {
+            if (peakVal1 >= (i * 10) - 4 && peakVal1 <= (i * 10) + 4) {
+              totalVals1[storeTotalVals1] = i;
+              storeTotalVals1++;
+            }
+          }
+          if (storeTotalVals1 == 2) {
+            totalVals1[2] = (totalVals1[0] * 10) + totalVals1[1];
+            collectTotalVals1 = false;
+            collectSpeed1 = true;
+            storeTotalVals1 = 0;
+            for (uint8_t i = totalVals1[2]; i < 99; i++) {
+              storage1[i] = 255;
+            }
+          }
+        } else {
+          if (collectSpeed1 == true) {
+            if (peakVal1 >= 0 && peakVal1 <= 100) {
+              for (uint8_t i = 0; i < 4; i++) {
+                if (peakVal1 <= (i * 25) + 5 && peakVal1 >= (i * 25) - 5) {
+                  speedVal1 = speeds[i];
+                  valArray1 = true;
+                  collectSpeed1 = false;
+                  collectStart1 = true;
+                }
+              }
+            }
+          } else {
+            if (peakVal1 >= 0 && peakVal1 <= 100) {
+              storage1[storeNum1 - 1] = peakVal1;
+              if (collectStart1 == true) {
+                markStart1 = storeNum1 - 1;
+                collectStart1 = false;
+              }
+            }
+          }
+        }
+      }
+      if (valSet1 == true) {
+        storeNum1 = 0;
+        if (peakVal1 >= 0 && peakVal1 <= 100) {
+          storage1[0] = peakVal1;
+        }
+      }
+    }
+    cycleClock1 = 0;
+  }
+
+  if (disconnected1 == true || disconnectCount1 > 150) {
+    disconnectCount1 = 151;
+    disconnected1 = true;
+    valArray1 = true;
+    valSet1 = false;
+    speedVal1 = 55;
+    storeNum1 = 0;
+    store1Count = 0;
+    for (uint8_t i = 0; i < 99; i++) {
+      storage1[i] = 255;
+    }
+  }
+
+  if (valSet1 == true) {
+    cycleClock1 = 0;
+  }
+
+  for (uint8_t i = 98; i > 0; i--) {
+    if (storage1[i] == 255) {
+      store1Count = i;
+    }
+  }
+
+  if (storage1[0] == 255) {
+    store1Count = 0;
+  }
+
+  if (playNum == store1Count) {
+    playNum = 0;
+  }
+
+  if (store1Count != 3) {
+    if (storage1[0] != 255) {
+      if (store1Count == 1) {
+        int hue = map(storage1[0], 0, 100, 0, 360);
+        float rf;
+        float gf;
+        float bf;
+        if (0 <= hue && hue < 60) {
+          rf = 1;
+          gf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+          bf = 0;
+        }
+        if (60 <= hue && hue < 120) {
+          rf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+          gf = 1;
+          bf = 0;
+        }
+        if (120 <= hue && hue < 180) {
+          rf = 0;
+          gf = 1;
+          bf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+        }
+        if (180 <= hue && hue < 240) {
+          rf = 0;
+          gf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+          bf = 1;
+        }
+        if (240 <= hue && hue < 300) {
+          rf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+          gf = 0;
+          bf = 1;
+        }
+        if (300 <= hue && hue < 360) {
+          rf = 1;
+          gf = 0;
+          bf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+        }
+        ledCommandR = rf * 255;
+        ledCommandG = gf * 255;
+        ledCommandB = bf * 255;
+        if (storage1[0] == 0) {
+          ledCommandR = 0;
+          ledCommandG = 0;
+          ledCommandB = 0;
+        }
+      } else {
+        if (cycleCountDelay < speedVal1) {
+          if (storage1[playNum] != 255) {
+            int hue = map(storage1[playNum], 0, 100, 0, 360);
+            float rf;
+            float gf;
+            float bf;
+            if (0 <= hue && hue < 60) {
+              rf = 1;
+              gf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+              bf = 0;
+            }
+            if (60 <= hue && hue < 120) {
+              rf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+              gf = 1;
+              bf = 0;
+            }
+            if (120 <= hue && hue < 180) {
+              rf = 0;
+              gf = 1;
+              bf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+            }
+            if (180 <= hue && hue < 240) {
+              rf = 0;
+              gf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+              bf = 1;
+            }
+            if (240 <= hue && hue < 300) {
+              rf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+              gf = 0;
+              bf = 1;
+            }
+            if (300 <= hue && hue < 360) {
+              rf = 1;
+              gf = 0;
+              bf = 1 - abs(((((int)(hue / 60)) % 2) + (((float)hue / 60) - (int)(hue / 60))) - 1);
+            }
+            ledCommandR = rf * 255;
+            ledCommandG = gf * 255;
+            ledCommandB = bf * 255;
+            if (storage1[playNum] == 0) {
+              ledCommandR = 0;
+              ledCommandG = 0;
+              ledCommandB = 0;
+            }
+          }
+        } else {
+          cycleCountDelay = 0;
+          playNum++;
+        }
+      }
+    }
+  } else {
+    ledCommandR = map(storage1[0], 0, 100, 0, 255);
+    ledCommandG = map(storage1[1], 0, 100, 0, 255);
+    ledCommandB = map(storage1[2], 0, 100, 0, 255);
+  }
+
+  if (lastCommandR > ledCommandR + 1 || lastCommandR < ledCommandR - 1) {
+    newValR = true;
+  } else {
+    newValR = false;
+  }
+
+  if (lastCommandG > ledCommandG + 1 || lastCommandG < ledCommandG - 1) {
+    newValG = true;
+  } else {
+    newValG = false;
+  }
+
+  if (lastCommandB > ledCommandB + 1 || lastCommandB < ledCommandB - 1) {
+    newValB = true;
+  } else {
+    newValB = false;
+  }
+
+  if (newValR == true || newValG == true || newValB == true) {
+    strip.setPixelColor(0, ledCommandR, ledCommandG, ledCommandB);
+    strip.show();
+    lastCommandR = ledCommandR;
+    lastCommandG = ledCommandG;
+    lastCommandB = ledCommandB;
+  }
+
+  if (storage1[0] == 255 || disconnected1 == true) {
+    strip.setPixelColor(0, 0, 0, 0);
+    strip.show();
+  }
+
+  delay(10);
+}
