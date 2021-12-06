@@ -1,4 +1,4 @@
-//MERGE_3
+//MERGE
 #define RX_PIN1 A1
 #define RX_PIN2 A2
 #define RX_PIN3 A3
